@@ -1,0 +1,20 @@
+.register-box {
+  display: flex;
+  flex-direction: column;   
+  justify-content: center; 
+  align-items: center;      
+  height: 100vh;
+  gap: 20px;                
+  background-color: #ffffff;
+}
+
+input {
+  display: block;
+  width: 80%;               
+  max-width: 280px;         
+  text-align: center;       
+  border-radius: 6px;      
+  padding: 12px;            
+  background-color: #f3ebeb;  
+  outline: none;            
+}
