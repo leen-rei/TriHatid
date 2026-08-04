@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    .phone-frame{
+        background-color: rgb(139, 200, 230);
+    }
+  </style>
+</head>
+<body>
+
+<div class="phone-frame">
+    
+    <!-- Top Hardware Notch -->
+    <div class="notch"></div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div>19:02</div>
+      <div class="status-icons">
+        <div class="signal-bars">
+          <div class="signal-bar"></div>
+          <div class="signal-bar"></div>
+          <div class="signal-bar"></div>
+          <div class="signal-bar"></div>
+        </div>
+        <span class="lte-text">LTE</span>
+        <div class="battery-icon"></div>
+      </div>
+    </div>
+
+    <!-- Centered Loader -->
+    <div class="progress-container">
+      <div class="loader">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    setTimeout(() => {
+      window.location.href = "login.html";
+    }, 2500);
+  </script>
+
+</body>
+</html>
