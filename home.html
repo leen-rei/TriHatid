@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - Home</title>
+
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- Shared App Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="phone-frame">
+    
+    <!-- Top Hardware Notch -->
+    <div class="notch"></div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div>19:02</div>
+      <div class="status-icons">
+        <div class="signal-bars">
+          <div class="signal-bar"></div>
+          <div class="signal-bar"></div>
+          <div class="signal-bar"></div>
+          <div class="signal-bar"></div>
+        </div>
+        <span class="lte-text">LTE</span>
+        <div class="battery-icon"></div>
+      </div>
+    </div>
+
+    <!-- In-App Notification Banner -->
+    <div id="app-notification" class="notification-banner">
+      <div class="notif-content">
+        <span class="notif-title">Driver On The Way</span>
+        <p class="notif-body">Trike #04 (Juan) accepted your ride.</p>
+      </div>
+    </div>
+
+    <!-- Interactive Map -->
+    <div id="map"></div>
+
+    <!-- Booking Form Card -->
+    <div class="booking-card">
+      <h2 class="card-title">Where to?</h2>
+      <p id="click-status" class="status-hint">Click map or use GPS to set pickup.</p>
+
+      <!-- GPS Locate Button -->
+      <button type="button" id="gps-btn" class="gps-button">
+        Use My Current Location
+      </button>
+      
+      <div class="search-container">
+        <input type="text" id="pickup-input" placeholder="Pickup in Aklan" class="input1" autocomplete="off">
+        <div id="pickup-results" class="autocomplete-results"></div>
+      </div>
+
+      <div class="search-container">
+        <input type="text" id="destination-input" placeholder="Dropoff in Aklan" class="input1" autocomplete="off">
+        <div id="destination-results" class="autocomplete-results"></div>
+      </div>
+      
+      <button type="button" class="button1" id="book-btn">Request TriHatid</button>
+    </div>
+
+    <!-- Modal Popup inside .phone-frame (Hidden by default) -->
+    <div class="modal-overlay" id="locationModal">
+      <div class="modal-card">
+        <h3 class="modal-header">Location Access Needed</h3>
+        <p class="modal-body">
+          TriHatid needs your location to set your pickup point accurately and find nearby tricycle drivers in Aklan.
+        </p>
+        <div class="modal-actions">
+          <button type="button" class="modal-btn btn-secondary" onclick="document.getElementById('locationModal').classList.remove('active')">Don't Allow</button>
+          <button type="button" class="modal-btn btn-primary" onclick="document.getElementById('locationModal').classList.remove('active')">Allow Access</button>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- Phone frame container end -->
+
+  <!-- Leaflet & Custom Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
