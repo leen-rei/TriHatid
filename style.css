@@ -490,3 +490,145 @@ a.button1 {
     transform: translate(24px, 0);
   }
 }
+
+/* =========================================
+   WELCOME SCREEN STYLES (TriHatid Theme)
+   ========================================= */
+.welcome-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background-color: #ffffff;
+}
+
+/* Hero Image Header */
+.welcome-hero {
+  width: 100%;
+  height: 62%;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Subtle dark gradient overlay to ensure the logo stands out over any photo */
+.welcome-hero::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(0, 43, 64, 0.4) 0%, rgba(0, 0, 0, 0.2) 100%);
+  z-index: 1;
+}
+
+.hero-overlay {
+  text-align: center;
+  color: #ffffff;
+  z-index: 2;
+}
+
+.welcome-logo {
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #ffffff;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Curved White Card Overlay */
+.welcome-card {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 44%;
+  background-color: #ffffff;
+  border-top-left-radius: 36px;
+  border-top-right-radius: 36px;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-sizing: border-box;
+  z-index: 10;
+  box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: hsla(200, 100%, 30%, 1);
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+}
+
+.welcome-subtitle {
+  font-size: 12px;
+  color: #555555;
+  line-height: 1.4;
+  margin-bottom: 24px;
+}
+
+/* Action Buttons */
+.welcome-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.welcome-btn {
+  width: 100%;
+  padding: 12px 0;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  text-align: center;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+/* TriHatid Primary Brand Button */
+.welcome-btn.btn-trihatid {
+  background-color: hsla(200, 100%, 30%, 0.9);
+  color: #ffffff;
+}
+
+.welcome-btn.btn-trihatid:hover {
+  background-color: hsla(200, 100%, 25%, 1);
+}
+
+/* TriHatid Outline Button */
+.welcome-btn.btn-outline {
+  background-color: transparent;
+  color: hsla(200, 100%, 30%, 1);
+  border: 1.5px solid hsla(200, 100%, 30%, 0.4);
+}
+
+.welcome-btn.btn-outline:hover {
+  background-color: #f0f4f8;
+  border-color: hsla(200, 100%, 30%, 1);
+}
+
+/* Status Bar Light Overrides */
+.status-bar.light-status {
+  color: #ffffff;
+}
+
+.status-bar.light-status .signal-bar,
+.status-bar.light-status .battery-icon {
+  background-color: #ffffff;
+  border-color: #ffffff;
+}
+
+.status-bar.light-status .battery-icon::after {
+  background-color: #ffffff;
+}
