@@ -50,6 +50,43 @@ async function reverseGeocode(lat, lng) {
 }
 
 // ===================================================
+// ROUTE FETCHING VIA OSRM API (Snaps to roads)
+// ===================================================
+async function drawRoadRoute(startCoords, endCoords) {
+  // Clear any existing route polyline
+  if (routeLine) map.removeLayer(routeLine);
+
+  // OSRM expects coordinates in [Longitude, Latitude] format
+  const startLngLat = `${startCoords[1]},${startCoords[0]}`;
+  const endLngLat = `${endCoords[1]},${endCoords[0]}`;
+
+  // Request high-precision route geometries in GeoJSON format
+  const url = `https://router.project-osrm.org/route/v1/driving/${startLngLat};${endLngLat}?overview=full&geometries=geojson`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.routes && data.routes.length > 0) {
+      // OSRM returns coordinates as [lng, lat]. Leaflet requires [lat, lng].
+      const routeCoordinates = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+
+      // Draw dashed line along actual road geometry
+      routeLine = L.polyline(routeCoordinates, {
+        color: '#005580',
+        weight: 5,
+        dashArray: '8, 8'
+      }).addTo(map);
+
+      // Adjust map view to fit the route bounds
+      map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+    }
+  } catch (error) {
+    console.error("Failed to fetch road route:", error);
+  }
+}
+
+// ===================================================
 // 2. MAP CLICK EVENT LISTENER
 // ===================================================
 map.on('click', async function(e) {
@@ -67,6 +104,7 @@ map.on('click', async function(e) {
 
     pickupCoords = [lat, lng];
     pickupMarker = L.marker(pickupCoords).addTo(map);
+    pickupMarker._icon.classList.add("pickup-style"); // Added green style here
     pickupMarker.bindPopup(`<b>Pickup:</b> ${placeName}`).openPopup();
 
     pickupInput.value = placeName;
@@ -81,19 +119,13 @@ map.on('click', async function(e) {
 
     destinationCoords = [lat, lng];
     dropoffMarker = L.marker(destinationCoords).addTo(map);
+    dropoffMarker._icon.classList.add("pickup-style"); // Added green style here!
     dropoffMarker.bindPopup(`<b>Destination:</b> ${placeName}`).openPopup();
 
     destinationInput.value = placeName;
 
-    // Draw route line
-    if (routeLine) map.removeLayer(routeLine);
-    routeLine = L.polyline([pickupCoords, destinationCoords], {
-      color: '#005580',
-      weight: 5,
-      dashArray: '8, 8'
-    }).addTo(map);
-
-    map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+    // Draw road route line
+    await drawRoadRoute(pickupCoords, destinationCoords);
 
     statusHint.innerText = "Locations set! Click map to reset.";
     selectionStep = 2;
@@ -139,26 +171,21 @@ async function searchLocation(query, type) {
         pickupCoords = coords;
         if (pickupMarker) map.removeLayer(pickupMarker);
         pickupMarker = L.marker(coords).addTo(map);
+        pickupMarker._icon.classList.add("pickup-style"); // Added green style here
         pickupMarker.bindPopup("<b>Pickup:</b> " + displayName).openPopup();
         pickupInput.value = displayName;
       } else if (type === 'destination') {
         destinationCoords = coords;
         if (dropoffMarker) map.removeLayer(dropoffMarker);
         dropoffMarker = L.marker(coords).addTo(map);
+        dropoffMarker._icon.classList.add("pickup-style"); // Added green style here!
         dropoffMarker.bindPopup("<b>Destination:</b> " + displayName).openPopup();
         destinationInput.value = displayName;
       }
 
       // Draw route if both locations exist
       if (pickupCoords && destinationCoords) {
-        if (routeLine) map.removeLayer(routeLine);
-        routeLine = L.polyline([pickupCoords, destinationCoords], {
-          color: '#005580',
-          weight: 5,
-          dashArray: '8, 8'
-        }).addTo(map);
-
-        map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+        await drawRoadRoute(pickupCoords, destinationCoords);
         statusHint.innerText = "Route ready! Click Request TriHatid.";
       } else {
         map.setView(coords, 16);
@@ -257,6 +284,8 @@ if (permAllowBtn && locationModal) {
         if (routeLine) map.removeLayer(routeLine);
 
         pickupMarker = L.marker(pickupCoords).addTo(map);
+        pickupMarker._icon.classList.add("pickup-style");
+
         pickupMarker.bindPopup(`<b>Your Location:</b> ${placeName}`).openPopup();
 
         map.setView(pickupCoords, 16);

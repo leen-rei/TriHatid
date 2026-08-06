@@ -137,7 +137,7 @@ body {
 .card-title {
   font-size: 20px;
   font-weight: 700;
-  color: hsla(200, 100%, 30%, 0.8);
+  color: #214329;
   width: 100%;
   text-align: left;
 }
@@ -169,7 +169,7 @@ body {
 }
 
 .input1:focus {
-  border-color: hsla(200, 100%, 30%, 0.8);
+  border-color: #214329;
   background-color: #ffffff;
 }
 
@@ -179,8 +179,8 @@ body {
   box-sizing: border-box;
   padding: 8px 12px;
   background-color: #f0f4f8;
-  color: hsla(200, 100%, 30%, 1);
-  border: 1px solid hsla(200, 100%, 30%, 0.3);
+  color: #214329;
+  border: 1px solid #214329;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
@@ -196,7 +196,7 @@ body {
   width: 100%;
   box-sizing: border-box;
   padding: 12px;
-  background-color: hsla(200, 100%, 30%, 0.9);
+  background-color: #214329;
   color: #ffffff;
   border: none;
   border-radius: 10px;
@@ -207,7 +207,7 @@ body {
 }
 
 .button1:hover {
-  background-color: hsla(200, 100%, 25%, 1);
+  background-color: #214329;
 }
 
 /* =========================================
@@ -239,7 +239,7 @@ body {
 
 .result-item:hover {
   background-color: #f5f5f5;
-  color: hsla(200, 100%, 30%, 1);
+  color: #214329;
 }
 
 /* =========================================
@@ -315,7 +315,7 @@ body {
 }
 
 .btn-primary {
-  background-color: hsla(200, 100%, 30%, 1);
+  background-color: #214329;
   color: #ffffff;
 }
 /* =========================================
@@ -335,7 +335,7 @@ body {
 .title {
   font-size: 28px;
   font-weight: 800;
-  color: hsla(200, 100%, 30%, 1);
+  color: #214329;
   margin-bottom: 8px;
   text-align: left;
 }
@@ -364,7 +364,7 @@ a.button1 {
 }
 
 .switch-link a {
-  color: hsla(200, 100%, 30%, 1);
+  color: #214329;
   font-weight: 700;
   text-decoration: none;
 }
@@ -440,7 +440,7 @@ a.button1 {
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  background: hsla(200, 100%, 30%, 1);
+  background: #214329;
   animation-timing-function: cubic-bezier(0, 1, 1, 0);
 }
 
@@ -534,11 +534,8 @@ a.button1 {
 }
 
 .welcome-logo {
-  font-size: 38px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: #ffffff;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  height: 450px;
+  width: 400px;
 }
 
 /* Curved White Card Overlay */
@@ -564,7 +561,7 @@ a.button1 {
 .welcome-title {
   font-size: 24px;
   font-weight: 800;
-  color: hsla(200, 100%, 30%, 1);
+  color: #214329;
   letter-spacing: 1.5px;
   margin-bottom: 8px;
 }
@@ -598,24 +595,24 @@ a.button1 {
 
 /* TriHatid Primary Brand Button */
 .welcome-btn.btn-trihatid {
-  background-color: hsla(200, 100%, 30%, 0.9);
+  background-color: #214329;
   color: #ffffff;
 }
 
 .welcome-btn.btn-trihatid:hover {
-  background-color: hsla(200, 100%, 25%, 1);
+  background-color: #214329;
 }
 
 /* TriHatid Outline Button */
 .welcome-btn.btn-outline {
   background-color: transparent;
-  color: hsla(200, 100%, 30%, 1);
-  border: 1.5px solid hsla(200, 100%, 30%, 0.4);
+  color: #214329;
+  border: 1.5px solid #214329;
 }
 
 .welcome-btn.btn-outline:hover {
   background-color: #f0f4f8;
-  border-color: hsla(200, 100%, 30%, 1);
+  border-color: #214329;
 }
 
 /* Status Bar Light Overrides */
@@ -632,3 +629,17 @@ a.button1 {
 .status-bar.light-status .battery-icon::after {
   background-color: #ffffff;
 }
+
+/* 1. This applies your custom dark green color filter */
+/* Applies your custom dark green hex color conversion */
+.pickup-style {
+  filter: hue-rotate(286deg) brightness(0.4) saturate(0.8);
+}
+
+/* Optional: Offset adjustment so the popup does not clip the pin tip */
+.leaflet-popup {
+  margin-bottom: 30px;
+}
+
+
+
