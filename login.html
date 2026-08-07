@@ -52,5 +52,32 @@
     </form>
 
   </div>
+
+  <!-- Put this right before </body> in login.html -->
+<script>
+  document.querySelector('.button1').addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    // If no role is set yet, default them to commuter on login
+    if (!localStorage.getItem('user_role')) {
+      localStorage.setItem('user_role', 'commuter');
+    }
+    
+    window.location.href = "home.html";
+  });
+
+  // At the bottom of login.html
+document.querySelector('.button1').addEventListener('click', function(e) {
+  e.preventDefault();
+  
+  // Optional fallback: if no role is saved yet, default to commuter
+  if (!localStorage.getItem('user_role')) {
+    localStorage.setItem('user_role', 'commuter');
+  }
+  
+  window.location.href = "home.html";
+});
+</script>
+
 </body>
 </html>

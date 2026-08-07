@@ -19,7 +19,7 @@ body {
 .phone-frame {
   position: relative; /* CRITICAL: Traps absolute-positioned modals inside the phone frame */
   width: 375px;
-  height: 650px;
+  height: 700px;
   background-color: #ffffff;
   border-radius: 40px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
@@ -336,7 +336,7 @@ body {
   font-size: 28px;
   font-weight: 800;
   color: #214329;
-  margin-bottom: 8px;
+  margin-bottom: 1px;
   text-align: left;
 }
 
@@ -360,13 +360,13 @@ a.button1 {
   font-size: 12px;
   color: #666666;
   text-align: center;
-  margin-top: 16px;
 }
 
 .switch-link a {
   color: #214329;
   font-weight: 700;
   text-decoration: none;
+  margin-top: 1px;
 }
 
 /* =========================================
@@ -494,48 +494,19 @@ a.button1 {
 /* =========================================
    WELCOME SCREEN STYLES (TriHatid Theme)
    ========================================= */
-.welcome-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  background-color: #ffffff;
-}
-
-/* Hero Image Header */
-.welcome-hero {
-  width: 100%;
-  height: 62%;
-  background-size: cover;
-  background-position: center;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* Subtle dark gradient overlay to ensure the logo stands out over any photo */
-.welcome-hero::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(180deg, rgba(0, 43, 64, 0.4) 0%, rgba(0, 0, 0, 0.2) 100%);
-  z-index: 1;
-}
-
-.hero-overlay {
+.welcome-overlay {
   text-align: center;
   color: #ffffff;
   z-index: 2;
 }
 
 .welcome-logo {
-  height: 450px;
-  width: 400px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%; /* Optional: set a width so centering is visible */
+  position: relative;
+  top: -20px; /* Moves the image 20 pixels up */
 }
 
 /* Curved White Card Overlay */

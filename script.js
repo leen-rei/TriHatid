@@ -219,7 +219,7 @@ destinationInput.addEventListener('keypress', function(e) {
 // ===================================================
 // 4. BOOKING BUTTON CLICK
 // ===================================================
-bookBtn.addEventListener('click', function() {
+/*bookBtn.addEventListener('click', function() {
   if (!pickupCoords || !destinationCoords) {
     alert("Please set both Pickup and Destination points first.");
     return;
@@ -238,7 +238,7 @@ bookBtn.addEventListener('click', function() {
       notif.classList.remove('show');
     }, 4000);
   }, 2000);
-});
+});*/
 
 // ===================================================
 // 5. GPS & IN-APP PERMISSION MODAL FLOW
@@ -309,3 +309,79 @@ if (permAllowBtn && locationModal) {
     );
   });
 }
+
+// Add this right before setupDriverLogic() in script.js
+
+function applyRoleAccessControl() {
+  // Get saved role from registration or default to commuter
+  const userRole = localStorage.getItem('user_role') || 'commuter';
+
+  const commuterCard = document.getElementById('commuter-booking-card');
+  const driverCard = document.getElementById('driver-dashboard-card');
+
+  if (userRole === 'driver') {
+    if (commuterCard) commuterCard.style.display = 'none';
+    if (driverCard) driverCard.style.display = 'flex';
+    setupDriverLogic();
+  } else {
+    if (commuterCard) commuterCard.style.display = 'flex';
+    if (driverCard) driverCard.style.display = 'none';
+  }
+}
+
+function setupDriverLogic() {
+  const toggleBtn = document.getElementById('online-toggle');
+  const statusText = document.getElementById('driver-status-text');
+  const requestBox = document.getElementById('incoming-request-box');
+  const acceptBtn = document.getElementById('driver-accept-btn');
+  const declineBtn = document.getElementById('driver-decline-btn');
+
+  if (!toggleBtn) return;
+
+  // 1. Polling engine: Check if a commuter placed a ride request
+  setInterval(() => {
+    const currentState = localStorage.getItem('trihatid_booking_state');
+    const isOnline = toggleBtn.style.color === 'rgb(46, 204, 113)';
+
+    if (isOnline && currentState === 'searching') {
+      requestBox.style.display = 'flex';
+      statusText.innerText = 'Passenger match discovered nearby!';
+    }
+  }, 1000); // Checks every second
+
+  // 2. Online/Offline Toggle logic
+  toggleBtn.addEventListener('click', () => {
+    const isOnline = toggleBtn.style.color === 'rgb(46, 204, 113)';
+
+    if (isOnline) {
+      toggleBtn.style.color = '#c0392b';
+      toggleBtn.innerText = '● OFFLINE';
+      statusText.innerText = 'Tap "OFFLINE" above to go online.';
+      requestBox.style.display = 'none';
+    } else {
+      toggleBtn.style.color = '#2ecc71';
+      toggleBtn.innerText = '● ONLINE';
+      statusText.innerText = 'Waiting for nearby commuters in Aklan...';
+    }
+  });
+
+  // 3. Driver Actions Logic
+  if (acceptBtn) {
+    acceptBtn.addEventListener('click', () => {
+      localStorage.setItem('trihatid_booking_state', 'accepted');
+      statusText.innerText = 'Trip accepted! Navigating to passenger...';
+      requestBox.style.display = 'none';
+    });
+  }
+
+  if (declineBtn) {
+    declineBtn.addEventListener('click', () => {
+      localStorage.removeItem('trihatid_booking_state');
+      statusText.innerText = 'Waiting for nearby commuters in Aklan...';
+      requestBox.style.display = 'none';
+    });
+  }
+}
+
+// Keep this execution line intact
+document.addEventListener('DOMContentLoaded', applyRoleAccessControl);

@@ -32,6 +32,13 @@
 
 <form class="register-box">
   <h1 class="title">TriHatid</h1>
+
+<!-- Inside register.html: Place this right above your existing registration submit button -->
+<label class="label" for="role-select" style="margin-top: 1px;">I am registering as a:</label>
+<select id="role-select" class="input1" style="width: 100%; margin-bottom: 12px; cursor: pointer;">
+  <option value="commuter">Commuter (Book Rides)</option>
+  <option value="driver">Driver (Accept Passengers)</option>
+</select>
   
   <label class="label" for="fullname">Name</label>
   <input type="text" id="fullname" placeholder="Juan Dela Cruz" class="input1">
@@ -45,12 +52,54 @@
   <label class="label" for="password">Password</label>
   <input type="password" id="password" class="input1">
   
-  <a href="home.html" class="button1">Submit</a>
+  <a href="home.html" class="button1">Sign Up</a>
 
       <p class="switch-link">
         Already have an account? <a href="login.html">Log In</a>
       </p>
 </form>
   </div>
+
+<!-- At the very bottom of register.html, right before </body> -->
+<script>
+  // Replace 'YOUR_SUBMIT_BUTTON_ID' with the actual ID or class of your existing button
+  // For example, if your button is <a href="..." class="button1">, use document.querySelector('.button1')
+  const submitBtn = document.querySelector('.button1') || document.getElementById('submit-btn');
+
+  if (submitBtn) {
+    submitBtn.addEventListener('click', function(e) {
+      // Prevent standard form submission or link jumping
+      e.preventDefault();
+      
+      // 1. Capture the selected role value
+      const selectedRole = document.getElementById('role-select').value;
+      
+      // 2. Temporarily save it in browser storage
+      localStorage.setItem('user_role', selectedRole);
+      
+      // 3. Redirect the user to the loading screen or directly home
+      window.location.href = "progress.html"; 
+    });
+  }
+
+  // At the bottom of register.html
+const submitBtn = document.querySelector('.button1') || document.getElementById('submit-btn');
+
+if (submitBtn) {
+  submitBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    // 1. Capture the selected role value
+    const selectedRole = document.getElementById('role-select').value;
+    
+    // 2. Save it in browser storage
+    localStorage.setItem('user_role', selectedRole);
+    
+    // 3. Go straight to the main app dashboard
+    window.location.href = "home.html"; 
+  });
+}
+</script>
+
 </body>
 </html>

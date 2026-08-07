@@ -3,23 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+  <title>TriHatid</title>
+  
+  <!-- Shared App Stylesheet -->
   <link rel="stylesheet" href="style.css">
-
-  <style>
-    .phone-frame{
-        background-color: rgb(255, 255, 255);;
-    }
-  </style>
 </head>
 <body>
 
-<div class="phone-frame">
-    
+  <div class="phone-frame">
     <!-- Top Hardware Notch -->
     <div class="notch"></div>
-
-    <!-- Status Bar -->
+    
+    <!-- Top Status Bar -->
     <div class="status-bar">
       <div>19:02</div>
       <div class="status-icons">
@@ -34,25 +29,26 @@
       </div>
     </div>
 
-    <!-- Centered Loader -->
+    <!-- Centered Loader Screen Content -->
     <div class="progress-container">
 
-<h1 class="title" style="font-size: 40px; text-align: center;">TriHatid</h1>
+      <p style="font-size: 40px; color: #214329; font-weight: 800; margin-top: 12px; letter-spacing: 0.5px;">
+        TriHatid
+      </p>
 
       <div class="loader">
-        <div></div>
-        <div></div>
-        <div></div>
-        <div></div>
+        <div></div><div></div><div></div><div></div>
       </div>
     </div>
   </div>
 
-<script>
-    setTimeout(() => {
-      window.location.href = "welcome.html";
-    }, 2500);
+  <script>
+    // Initial App Splash Screen: Show loader then redirect to welcome.html
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        window.location.href = "welcome.html";
+      }, 2000); // 2 seconds loading window
+    });
   </script>
-
 </body>
 </html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - Choose a Ride</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .ride-container {
+      padding: 75px 20px 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      height: 100%;
+      overflow-y: auto;
+    }
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    .back-arrow {
+      text-decoration: none;
+      font-size: 20px;
+      color: #333;
+      font-weight: bold;
+    }
+    .page-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1d1d1f;
+    }
+    .ride-option-card {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background-color: #ffffff;
+    }
+    .ride-option-card.selected {
+      border-color: #214329;
+      background-color: #f4f7f5;
+    }
+    .ride-icon {
+      width: 50px;
+      height: 40px;
+      object-fit: contain;
+      margin-right: 16px;
+    }
+    .ride-details {
+      flex: 1;
+      text-align: left;
+    }
+    .ride-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1d1d1f;
+    }
+    .ride-capacity {
+      font-size: 11px;
+      color: #666;
+      margin-top: 2px;
+    }
+    .ride-price-info {
+      text-align: right;
+    }
+    .ride-fare {
+      font-size: 15px;
+      font-weight: 700;
+      color: #214329;
+    }
+    .ride-label {
+      font-size: 10px;
+      color: #888;
+    }
+    .payment-section {
+      margin-top: 10px;
+      border-top: 1px solid #eee;
+      padding-top: 16px;
+      text-align: left;
+    }
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .payment-selector {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="phone-frame">
+    <div class="notch"></div>
+    
+    <div class="status-bar">
+      <div>19:02</div>
+      <div class="status-icons">
+        <div class="signal-bars">
+          <div class="signal-bar"></div>
+          <div class="signal-bar"></div>
+          <div class="signal-bar"></div>
+          <div class="signal-bar"></div>
+        </div>
+        <span class="lte-text">LTE</span>
+        <div class="battery-icon"></div>
+      </div>
+    </div>
+
+    <div class="ride-container">
+      <div class="header-row">
+        <a href="home.html" class="back-arrow">✕</a>
+        <h2 class="page-title">Choose a ride</h2>
+      </div>
+
+      <!-- Option 1: Regular -->
+      <div class="ride-option-card selected" onclick="selectRide(this)">
+        <img src="logo2.png" class="ride-icon" alt="Regular">
+        <div class="ride-details">
+          <span class="ride-name">Regular</span>
+          <p class="ride-capacity">Up to 3 passengers</p>
+        </div>
+        <div class="ride-price-info">
+          <span class="ride-fare">₱ 40.00</span>
+          <p class="ride-label">Base fare</p>
+        </div>
+      </div>
+
+      <!-- Option 2: Special -->
+      <div class="ride-option-card" onclick="selectRide(this)">
+        <img src="logo2.png" class="ride-icon" alt="Special" style="filter: grayscale(100%);">
+        <div class="ride-details">
+          <span class="ride-name">Special</span>
+          <p class="ride-capacity">Up to 4 passengers</p>
+        </div>
+        <div class="ride-price-info">
+          <span class="ride-fare">₱ 60.00</span>
+          <p class="ride-label">Base fare</p>
+        </div>
+      </div>
+
+      <!-- Option 3: Delivery -->
+      <div class="ride-option-card" onclick="selectRide(this)">
+        <img src="logo2.png" class="ride-icon" alt="Delivery" style="filter: invert(30%);">
+        <div class="ride-details">
+          <span class="ride-name">Delivery</span>
+          <p class="ride-capacity">For small items</p>
+        </div>
+        <div class="ride-price-info">
+          <span class="ride-fare">₱ 50.00</span>
+          <p class="ride-label">Base fare</p>
+        </div>
+      </div>
+
+      <div class="payment-section">
+        <p class="section-label">Payment method</p>
+        <div class="payment-selector">
+          <span>Cash</span>
+          <span style="color: #888; font-size: 10px;">❯</span>
+        </div>
+      </div>
+
+      <a href="searching.html" class="button1" style="margin-top: auto; text-decoration: none; text-align: center;">
+        Confirm Ride
+      </a>
+    </div>
+  </div>
+
+  <!-- Inside ride-options.html -->
+<button type="button" id="confirm-ride-btn" class="button1" style="margin-top: auto; border: none; font-family: inherit;">
+  Confirm Ride
+</button>
+
+<script>
+  document.getElementById('confirm-ride-btn').addEventListener('click', function() {
+    // Flag the shared storage state that a commuter needs a ride
+    localStorage.setItem('trihatid_booking_state', 'searching');
+    
+    // Redirect to the waiting screen
+    window.location.href = "searching.html";
+  });
+</script>
+</body>
+</html>
