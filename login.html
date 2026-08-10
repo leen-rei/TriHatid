@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TriHatid - Login</title>
   
-  <!-- Shared App Stylesheet -->
   <link rel="stylesheet" href="style.css">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -14,10 +13,8 @@
 <body>
   <div class="phone-frame">
     
-    <!-- Hardware Notch -->
     <div class="notch"></div>
     
-    <!-- Top Status Bar -->
     <div class="status-bar">
       <div>19:02</div>
       <div class="status-icons">
@@ -37,15 +34,13 @@
       <h1 class="title">TriHatid</h1>
       
       <label class="label" for="login-username">Username or Email</label>
-      <input type="text" id="login-username" placeholder="juandriver" class="input1">
+      <input type="text" id="login-username" class="input1">
       
       <label class="label" for="login-password">Password</label>
-      <input type="password" id="login-password" placeholder="••••••••" class="input1">
+      <input type="password" id="login-password" class="input1">
       
-      <!-- Button linking directly to home.html -->
       <a href="home.html" class="button1">Login</a>
 
-      <!-- Link to Register Page if user doesn't have an account -->
       <p class="switch-link">
         Don't have an account? <a href="register.html">Sign Up</a>
       </p>
@@ -53,30 +48,17 @@
 
   </div>
 
-  <!-- Put this right before </body> in login.html -->
 <script>
   document.querySelector('.button1').addEventListener('click', function(e) {
+    // 1. Stop the anchor tag from instantly switching pages
     e.preventDefault();
     
-    // If no role is set yet, default them to commuter on login
     if (!localStorage.getItem('user_role')) {
-      localStorage.setItem('user_role', 'commuter');
+      localStorage.setItem('user_role', 'passenger');
     }
     
     window.location.href = "home.html";
   });
-
-  // At the bottom of login.html
-document.querySelector('.button1').addEventListener('click', function(e) {
-  e.preventDefault();
-  
-  // Optional fallback: if no role is saved yet, default to commuter
-  if (!localStorage.getItem('user_role')) {
-    localStorage.setItem('user_role', 'commuter');
-  }
-  
-  window.location.href = "home.html";
-});
 </script>
 
 </body>

@@ -6,8 +6,9 @@
   <title>TriHatid - Rate Ride</title>
   <link rel="stylesheet" href="style.css">
   <style>
+ 
     .rating-wrapper {
-      padding: 80px 24px 32px 24px;
+      padding: 90px 24px 32px 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -15,6 +16,10 @@
       height: 100%;
       text-align: center;
       gap: 16px;
+      box-sizing: border-box;
+      background-color: #ffffff;
+      position: relative;
+      z-index: 10;
     }
     .big-avatar {
       width: 90px;
@@ -46,6 +51,7 @@
       font-size: 12px;
       outline: none;
       resize: none;
+      box-sizing: border-box;
     }
   </style>
 </head>
@@ -69,7 +75,6 @@
       
       <div>
         <span class="driver-name" style="font-size: 16px; display:block;">Juan Dela Cruz</span>
-        <span class="driver-vehicle" style="color:#666;">TVS King • ABC 123</span>
       </div>
 
       <div class="stars-row">
@@ -80,11 +85,11 @@
         <span class="star active">★</span>
       </div>
 
-      <p style="font-size: 13px; font-weight: 700; color: #214329;">Great ride!</p>
+      <p style="font-size: 13px; font-weight: 700; color: #214329;">Feedback:</p>
 
       <textarea class="feedback-input" placeholder="Write an optional comment..."></textarea>
 
-      <a href="home.html" class="button1" style="width:100%; text-align: center; text-decoration: none; margin-top: 12px;">
+      <a href="home.html" class="button1" style="width:100%; text-align: center; text-decoration: none; margin-top: 12px; display: block; box-sizing: border-box;">
         Submit
       </a>
     </div>

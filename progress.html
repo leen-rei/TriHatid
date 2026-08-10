@@ -5,16 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TriHatid</title>
   
-  <!-- Shared App Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <div class="phone-frame">
-    <!-- Top Hardware Notch -->
+
     <div class="notch"></div>
     
-    <!-- Top Status Bar -->
     <div class="status-bar">
       <div>19:02</div>
       <div class="status-icons">
@@ -29,7 +27,6 @@
       </div>
     </div>
 
-    <!-- Centered Loader Screen Content -->
     <div class="progress-container">
 
       <p style="font-size: 40px; color: #214329; font-weight: 800; margin-top: 12px; letter-spacing: 0.5px;">
@@ -43,11 +40,11 @@
   </div>
 
   <script>
-    // Initial App Splash Screen: Show loader then redirect to welcome.html
+
     document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => {
         window.location.href = "welcome.html";
-      }, 2000); // 2 seconds loading window
+      }, 2000); // 
     });
   </script>
 </body>

@@ -33,8 +33,12 @@
       animation: pulse 2s infinite ease-out;
       opacity: 0;
     }
-    .pulse-ring:nth-child(2) { animation-delay: 0.6s; }
-    .pulse-ring:nth-child(3) { animation-delay: 1.2s; }
+    .pulse-ring:nth-child(2) { 
+      animation-delay: 0.6s; 
+    }
+    .pulse-ring:nth-child(3) { 
+      animation-delay: 1.2s; 
+    }
     
     .center-avatar {
       width: 80px;
@@ -104,19 +108,12 @@
     </div>
   </div>
 
-<!-- Inside searching.html -->
 <script>
-  // Dynamic frontend polling engine
-  const checkStatusInterval = setInterval(() => {
-    const state = localStorage.getItem('trihatid_booking_state');
-    
-    if (state === 'accepted') {
-      clearInterval(checkStatusInterval);
-      window.location.href = "on-trip.html"; // Move forward to active ride layout
-    }
-  }, 1000); // Check every second if the driver clicked accept
+  setTimeout(() => {
+    localStorage.setItem('trihatid_booking_state', 'accepted');
+    window.location.href = "on-trip.html"; // 
+  }, 4000);
 
-  // Handle Cancel Request button cleanly
   document.querySelector('.btn-outline').addEventListener('click', function(e) {
     e.preventDefault();
     localStorage.removeItem('trihatid_booking_state');

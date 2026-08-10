@@ -7,12 +7,13 @@
   <link rel="stylesheet" href="style.css">
   <style>
     .ride-container {
-      padding: 75px 20px 24px 20px;
+      padding: 15px 20px 24px 20px; 
       display: flex;
       flex-direction: column;
       gap: 14px;
       height: 100%;
       overflow-y: auto;
+      box-sizing: border-box;
     }
     .header-row {
       display: flex;
@@ -46,9 +47,10 @@
       background-color: #f4f7f5;
     }
     .ride-icon {
-      width: 50px;
-      height: 40px;
-      object-fit: contain;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%; 
+      object-fit: cover;   
       margin-right: 16px;
     }
     .ride-details {
@@ -127,12 +129,11 @@
         <h2 class="page-title">Choose a ride</h2>
       </div>
 
-      <!-- Option 1: Regular -->
-      <div class="ride-option-card selected" onclick="selectRide(this)">
-        <img src="logo2.png" class="ride-icon" alt="Regular">
+      <!-- Regular -->
+      <div class="ride-option-card selected">
+        <img src="regular.jpg" class="ride-icon" alt="Regular">
         <div class="ride-details">
           <span class="ride-name">Regular</span>
-          <p class="ride-capacity">Up to 3 passengers</p>
         </div>
         <div class="ride-price-info">
           <span class="ride-fare">₱ 40.00</span>
@@ -140,28 +141,14 @@
         </div>
       </div>
 
-      <!-- Option 2: Special -->
-      <div class="ride-option-card" onclick="selectRide(this)">
-        <img src="logo2.png" class="ride-icon" alt="Special" style="filter: grayscale(100%);">
+      <!-- Special -->
+      <div class="ride-option-card">
+        <img src="special.jpg" class="ride-icon" alt="Special">
         <div class="ride-details">
           <span class="ride-name">Special</span>
-          <p class="ride-capacity">Up to 4 passengers</p>
         </div>
         <div class="ride-price-info">
           <span class="ride-fare">₱ 60.00</span>
-          <p class="ride-label">Base fare</p>
-        </div>
-      </div>
-
-      <!-- Option 3: Delivery -->
-      <div class="ride-option-card" onclick="selectRide(this)">
-        <img src="logo2.png" class="ride-icon" alt="Delivery" style="filter: invert(30%);">
-        <div class="ride-details">
-          <span class="ride-name">Delivery</span>
-          <p class="ride-capacity">For small items</p>
-        </div>
-        <div class="ride-price-info">
-          <span class="ride-fare">₱ 50.00</span>
           <p class="ride-label">Base fare</p>
         </div>
       </div>
@@ -174,25 +161,25 @@
         </div>
       </div>
 
-      <a href="searching.html" class="button1" style="margin-top: auto; text-decoration: none; text-align: center;">
+      <button type="button" id="confirm-ride-btn" class="button1" style="margin-top: auto; border: none; font-family: inherit;">
         Confirm Ride
-      </a>
+      </button>
     </div>
   </div>
 
-  <!-- Inside ride-options.html -->
-<button type="button" id="confirm-ride-btn" class="button1" style="margin-top: auto; border: none; font-family: inherit;">
-  Confirm Ride
-</button>
+  <script>
+    document.getElementById('confirm-ride-btn').addEventListener('click', function() {
+      localStorage.setItem('trihatid_booking_state', 'searching');
+      window.location.href = "searching.html";
+    });
 
-<script>
-  document.getElementById('confirm-ride-btn').addEventListener('click', function() {
-    // Flag the shared storage state that a commuter needs a ride
-    localStorage.setItem('trihatid_booking_state', 'searching');
-    
-    // Redirect to the waiting screen
-    window.location.href = "searching.html";
-  });
-</script>
+    const cards = document.querySelectorAll('.ride-option-card');
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        cards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+      });
+    });
+  </script>
 </body>
 </html>

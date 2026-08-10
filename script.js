@@ -1,66 +1,33 @@
-// ===================================================
-// 1. INITIALIZE MAP (Centered on Aklan)
-// ===================================================
-const map = L.map('map', {
-  zoomControl: false 
-}).setView([11.5833, 122.4833], 13); // Default view set to Batan, Aklan
-
-// Load Map Tiles
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-  attribution: '© OpenStreetMap'
-}).addTo(map);
-
-// Variables to track markers and route
+// GLOBAL STATE & CONTAINER VARIABLES
+let map;
 let pickupMarker = null;
 let dropoffMarker = null;
 let routeLine = null;
-
 let pickupCoords = null;
 let destinationCoords = null;
+let selectionStep = 0; 
 
-// Track selection state for clicks: 0 = set pickup, 1 = set destination, 2 = reset
-let selectionStep = 0;
-
-// Target UI Elements from HTML
-const statusHint = document.getElementById('click-status');
-const pickupInput = document.getElementById('pickup-input');
-const destinationInput = document.getElementById('destination-input');
-const bookBtn = document.getElementById('book-btn');
-const notif = document.getElementById('app-notification');
-
-// GPS & Permission Modal UI Elements (Updated to match home.html)
-const gpsBtn = document.getElementById('gps-btn');
-const locationModal = document.getElementById('locationModal');
-const permAllowBtn = locationModal ? locationModal.querySelector('.btn-primary') : null;
-const permDenyBtn = locationModal ? locationModal.querySelector('.btn-secondary') : null;
-
-// ===================================================
-// REVERSE GEOCODING (Convert Map Clicks to Aklan Address)
-// ===================================================
+// Convert Map Clicks to Aklan Address
 async function reverseGeocode(lat, lng) {
   const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
   try {
     const response = await fetch(url);
     const data = await response.json();
-    return data.display_name.split(',').slice(0, 3).join(',');
+    if (data && data.display_name) {
+      return data.display_name.split(',').slice(0, 3).join(',');
+    }
+    return `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`;
   } catch (error) {
     return `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`;
   }
 }
 
-// ===================================================
-// ROUTE FETCHING VIA OSRM API (Snaps to roads)
-// ===================================================
+// ROUTE FETCHING VIA OSRM API 
 async function drawRoadRoute(startCoords, endCoords) {
-  // Clear any existing route polyline
   if (routeLine) map.removeLayer(routeLine);
 
-  // OSRM expects coordinates in [Longitude, Latitude] format
   const startLngLat = `${startCoords[1]},${startCoords[0]}`;
   const endLngLat = `${endCoords[1]},${endCoords[0]}`;
-
-  // Request high-precision route geometries in GeoJSON format
   const url = `https://router.project-osrm.org/route/v1/driving/${startLngLat};${endLngLat}?overview=full&geometries=geojson`;
 
   try {
@@ -68,17 +35,14 @@ async function drawRoadRoute(startCoords, endCoords) {
     const data = await response.json();
 
     if (data.routes && data.routes.length > 0) {
-      // OSRM returns coordinates as [lng, lat]. Leaflet requires [lat, lng].
       const routeCoordinates = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
 
-      // Draw dashed line along actual road geometry
       routeLine = L.polyline(routeCoordinates, {
-        color: '#005580',
+        color: '#214329',
         weight: 5,
         dashArray: '8, 8'
       }).addTo(map);
 
-      // Adjust map view to fit the route bounds
       map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
     }
   } catch (error) {
@@ -86,75 +50,14 @@ async function drawRoadRoute(startCoords, endCoords) {
   }
 }
 
-// ===================================================
-// 2. MAP CLICK EVENT LISTENER
-// ===================================================
-map.on('click', async function(e) {
-  const lat = e.latlng.lat;
-  const lng = e.latlng.lng;
-
-  statusHint.innerText = "Getting location name...";
-  const placeName = await reverseGeocode(lat, lng);
-
-  if (selectionStep === 0) {
-    // Set Pickup Location
-    if (pickupMarker) map.removeLayer(pickupMarker);
-    if (dropoffMarker) map.removeLayer(dropoffMarker);
-    if (routeLine) map.removeLayer(routeLine);
-
-    pickupCoords = [lat, lng];
-    pickupMarker = L.marker(pickupCoords).addTo(map);
-    pickupMarker._icon.classList.add("pickup-style"); // Added green style here
-    pickupMarker.bindPopup(`<b>Pickup:</b> ${placeName}`).openPopup();
-
-    pickupInput.value = placeName;
-    destinationInput.value = "";
-    
-    statusHint.innerText = "Great! Now click to set Destination.";
-    selectionStep = 1;
-
-  } else if (selectionStep === 1) {
-    // Set Destination Location
-    if (dropoffMarker) map.removeLayer(dropoffMarker);
-
-    destinationCoords = [lat, lng];
-    dropoffMarker = L.marker(destinationCoords).addTo(map);
-    dropoffMarker._icon.classList.add("pickup-style"); // Added green style here!
-    dropoffMarker.bindPopup(`<b>Destination:</b> ${placeName}`).openPopup();
-
-    destinationInput.value = placeName;
-
-    // Draw road route line
-    await drawRoadRoute(pickupCoords, destinationCoords);
-
-    statusHint.innerText = "Locations set! Click map to reset.";
-    selectionStep = 2;
-
-  } else {
-    // Reset on third click
-    if (pickupMarker) map.removeLayer(pickupMarker);
-    if (dropoffMarker) map.removeLayer(dropoffMarker);
-    if (routeLine) map.removeLayer(routeLine);
-
-    pickupInput.value = "";
-    destinationInput.value = "";
-    statusHint.innerText = "Click map or type location in Aklan.";
-    selectionStep = 0;
-  }
-});
-
-// ===================================================
-// 3. GEOCODING (STRICTLY RESTRICTED TO AKLAN)
-// ===================================================
+// GEOCODING VIA NOMINATIM (STRICTLY RESTRICTED TO AKLAN)
 async function searchLocation(query, type) {
   if (!query || query.trim() === "") return;
+  const statusHint = document.getElementById('click-status');
+  if (statusHint) statusHint.innerText = "Searching in Aklan...";
 
-  statusHint.innerText = "Searching in Aklan...";
-
-  // Aklan Geographical Bounding Box
   const aklanViewbox = "121.80,11.35,122.60,11.95";
   const localQuery = `${query}, Aklan, Philippines`;
-
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(localQuery)}&countrycodes=ph&viewbox=${aklanViewbox}&bounded=1`;
 
   try {
@@ -171,217 +74,206 @@ async function searchLocation(query, type) {
         pickupCoords = coords;
         if (pickupMarker) map.removeLayer(pickupMarker);
         pickupMarker = L.marker(coords).addTo(map);
-        pickupMarker._icon.classList.add("pickup-style"); // Added green style here
+        pickupMarker._icon?.classList.add("pickup-style");
         pickupMarker.bindPopup("<b>Pickup:</b> " + displayName).openPopup();
-        pickupInput.value = displayName;
+        document.getElementById('pickup-input').value = displayName;
       } else if (type === 'destination') {
         destinationCoords = coords;
         if (dropoffMarker) map.removeLayer(dropoffMarker);
         dropoffMarker = L.marker(coords).addTo(map);
-        dropoffMarker._icon.classList.add("pickup-style"); // Added green style here!
+        dropoffMarker._icon?.classList.add("pickup-style");
         dropoffMarker.bindPopup("<b>Destination:</b> " + displayName).openPopup();
-        destinationInput.value = displayName;
+        document.getElementById('destination-input').value = displayName;
       }
 
-      // Draw route if both locations exist
       if (pickupCoords && destinationCoords) {
         await drawRoadRoute(pickupCoords, destinationCoords);
-        statusHint.innerText = "Route ready! Click Request TriHatid.";
+        if (statusHint) statusHint.innerText = "Route ready! Click Request TriHatid.";
       } else {
         map.setView(coords, 16);
-        statusHint.innerText = "Location found in Aklan! Set next point.";
+        if (statusHint) statusHint.innerText = "Location found in Aklan! Set next point.";
       }
     } else {
-      alert("Location not found within Aklan. Please enter a valid Aklan landmark, barangay, or municipality.");
-      statusHint.innerText = "Click map or type location in Aklan.";
+      alert("Location not found within Aklan. Please enter a valid municipality or landmark.");
+      if (statusHint) statusHint.innerText = "Click map or type location in Aklan.";
     }
   } catch (error) {
     console.error("Geocoding error:", error);
-    statusHint.innerText = "Error searching location.";
+    if (statusHint) statusHint.innerText = "Error searching location.";
   }
 }
 
-// Listen for 'Enter' key presses on inputs
-pickupInput.addEventListener('keypress', function(e) {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    searchLocation(pickupInput.value, 'pickup');
-  }
-});
-
-destinationInput.addEventListener('keypress', function(e) {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    searchLocation(destinationInput.value, 'destination');
-  }
-});
-
-// ===================================================
-// 4. BOOKING BUTTON CLICK
-// ===================================================
-/*bookBtn.addEventListener('click', function() {
-  if (!pickupCoords || !destinationCoords) {
-    alert("Please set both Pickup and Destination points first.");
-    return;
-  }
-
-  bookBtn.innerText = "Searching for driver...";
-  bookBtn.style.backgroundColor = "#e67e22";
-
-  setTimeout(function() {
-    bookBtn.innerText = "Driver Matched!";
-    bookBtn.style.backgroundColor = "#27ae60";
-
-    notif.classList.add('show');
-
-    setTimeout(function() {
-      notif.classList.remove('show');
-    }, 4000);
-  }, 2000);
-});*/
-
-// ===================================================
-// 5. GPS & IN-APP PERMISSION MODAL FLOW
-// ===================================================
-
-// Step 1: Open the modal overlay when "Use My Current Location" button is clicked
-if (gpsBtn && locationModal) {
-  gpsBtn.addEventListener('click', function() {
-    locationModal.classList.add('active');
+// NAVIGATION VIEW SWITCHER
+function switchView(viewName) {
+  const views = ['home', 'history', 'profile'];
+  views.forEach(v => {
+    const viewEl = document.getElementById(`view-${v}`);
+    const navEl = document.getElementById(`nav-${v}`);
+    if (viewEl) viewEl.classList.remove('active');
+    if (navEl) navEl.classList.remove('active');
   });
+
+  const targetView = document.getElementById(`view-${viewName}`);
+  const targetNav = document.getElementById(`nav-${viewName}`);
+  if (targetView) targetView.classList.add('active');
+  if (targetNav) targetNav.classList.add('active');
+  
+  if (viewName === 'home' && map) {
+    setTimeout(() => map.invalidateSize(), 150);
+  }
 }
 
-// Step 2: Hide modal overlay if user clicks "Don't Allow"
-if (permDenyBtn && locationModal) {
-  permDenyBtn.addEventListener('click', function() {
-    locationModal.classList.remove('active');
-    statusHint.innerText = "Location permission denied. Tap map to set pickup.";
+// INITIAL DOM HANDLER
+document.addEventListener('DOMContentLoaded', () => {
+  const mapContainer = document.getElementById('map');
+  if (!mapContainer) return; 
+
+  map = L.map('map', { zoomControl: false }).setView([11.5833, 122.4833], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+  setTimeout(() => map.invalidateSize(), 200);
+
+  const statusHint = document.getElementById('click-status');
+  const pickupInput = document.getElementById('pickup-input');
+  const destinationInput = document.getElementById('destination-input');
+  const gpsBtn = document.getElementById('gps-btn');
+  const locationModal = document.getElementById('locationModal');
+  const modalAllow = document.getElementById('modal-allow');
+  const modalDeny = document.getElementById('modal-deny');
+  const bookBtn = document.getElementById('book-btn');
+
+  map.on('click', async function(e) {
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+    if (statusHint) statusHint.innerText = "Getting location name...";
+    
+    const placeName = await reverseGeocode(lat, lng);
+
+    if (selectionStep === 0) {
+      if (pickupMarker) map.removeLayer(pickupMarker);
+      if (dropoffMarker) map.removeLayer(dropoffMarker);
+      if (routeLine) map.removeLayer(routeLine);
+
+      pickupCoords = [lat, lng];
+      pickupMarker = L.marker(pickupCoords).addTo(map);
+      pickupMarker._icon?.classList.add("pickup-style");
+      pickupMarker.bindPopup(`<b>Pickup:</b> ${placeName}`).openPopup();
+      if (pickupInput) pickupInput.value = placeName;
+      if (destinationInput) destinationInput.value = "";
+      if (statusHint) statusHint.innerText = "Great! Now click to set Destination.";
+      selectionStep = 1;
+    } else if (selectionStep === 1) {
+      if (dropoffMarker) map.removeLayer(dropoffMarker);
+
+      destinationCoords = [lat, lng];
+      dropoffMarker = L.marker(destinationCoords).addTo(map);
+      dropoffMarker._icon?.classList.add("pickup-style");
+      dropoffMarker.bindPopup(`<b>Destination:</b> ${placeName}`).openPopup();
+      if (destinationInput) destinationInput.value = placeName;
+
+      await drawRoadRoute(pickupCoords, destinationCoords);
+      if (statusHint) statusHint.innerText = "Locations set! Click map to reset.";
+      selectionStep = 2;
+    } else {
+      if (pickupMarker) map.removeLayer(pickupMarker);
+      if (dropoffMarker) map.removeLayer(dropoffMarker);
+      if (routeLine) map.removeLayer(routeLine);
+
+      if (pickupInput) pickupInput.value = "";
+      if (destinationInput) destinationInput.value = "";
+      if (statusHint) statusHint.innerText = "Click map or type location in Aklan.";
+      selectionStep = 0;
+    }
   });
-}
 
-// Step 3: Trigger Browser GPS when user clicks "Allow Access"
-if (permAllowBtn && locationModal) {
-  permAllowBtn.addEventListener('click', function() {
-    locationModal.classList.remove('active');
+  if (gpsBtn) {
+    gpsBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const modal = document.getElementById('locationModal');
+      if (modal) {
+        modal.style.display = 'flex';
+      } else {
+        alert("Modal element not found in DOM.");
+      }
+    });
+  }
 
+  if (modalDeny) {
+    modalDeny.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const modal = document.getElementById('locationModal');
+      if (modal) modal.style.display = 'none';
+      if (statusHint) statusHint.innerText = "Location permission denied. Tap map to set pickup.";
+    });
+  }
+
+  if (modalAllow) {
+    modalAllow.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const modal = document.getElementById('locationModal');
+      if (modal) modal.style.display = 'none';
+      executeSystemGeolocation();
+    });
+  }
+
+  function executeSystemGeolocation() {
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
+      alert('Geolocation feature not supported by this browser runtime environment.');
       return;
     }
-
-    statusHint.innerText = "Locating your GPS position...";
-    gpsBtn.innerText = "Locating...";
+    if (statusHint) statusHint.innerText = "Locating your GPS position...";
+    if (gpsBtn) gpsBtn.textContent = 'Locating...';
 
     navigator.geolocation.getCurrentPosition(
-      async function(position) {
+      async (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         pickupCoords = [lat, lng];
-
         const placeName = await reverseGeocode(lat, lng);
 
         if (pickupMarker) map.removeLayer(pickupMarker);
         if (routeLine) map.removeLayer(routeLine);
 
         pickupMarker = L.marker(pickupCoords).addTo(map);
-        pickupMarker._icon.classList.add("pickup-style");
-
+        pickupMarker._icon?.classList.add("pickup-style");
         pickupMarker.bindPopup(`<b>Your Location:</b> ${placeName}`).openPopup();
-
         map.setView(pickupCoords, 16);
 
-        pickupInput.value = placeName;
-        gpsBtn.innerText = "Use My Current Location";
-        statusHint.innerText = "Current location set! Select destination.";
-        
+        if (pickupInput) pickupInput.value = placeName;
+        if (gpsBtn) gpsBtn.textContent = 'Use My Current Location';
+        if (statusHint) statusHint.innerText = "Current location set! Select destination.";
         selectionStep = 1;
       },
-      function(error) {
-        console.error("GPS Error:", error);
-        gpsBtn.innerText = "Use My Current Location";
-        statusHint.innerText = "GPS error. Tap map to set pickup.";
+      (err) => {
+        alert('Location data fetch permission denied or timed out.');
+        if (gpsBtn) gpsBtn.textContent = 'Use My Current Location';
+        if (statusHint) statusHint.innerText = "GPS error. Tap map to set pickup.";
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
+      { enableHighAccuracy: true, timeout: 10000 }
     );
-  });
-}
-
-// Add this right before setupDriverLogic() in script.js
-
-function applyRoleAccessControl() {
-  // Get saved role from registration or default to commuter
-  const userRole = localStorage.getItem('user_role') || 'commuter';
-
-  const commuterCard = document.getElementById('commuter-booking-card');
-  const driverCard = document.getElementById('driver-dashboard-card');
-
-  if (userRole === 'driver') {
-    if (commuterCard) commuterCard.style.display = 'none';
-    if (driverCard) driverCard.style.display = 'flex';
-    setupDriverLogic();
-  } else {
-    if (commuterCard) commuterCard.style.display = 'flex';
-    if (driverCard) driverCard.style.display = 'none';
   }
-}
 
-function setupDriverLogic() {
-  const toggleBtn = document.getElementById('online-toggle');
-  const statusText = document.getElementById('driver-status-text');
-  const requestBox = document.getElementById('incoming-request-box');
-  const acceptBtn = document.getElementById('driver-accept-btn');
-  const declineBtn = document.getElementById('driver-decline-btn');
+  if (bookBtn) {
+    bookBtn.addEventListener('click', () => {
+      if (!pickupCoords || !destinationCoords) {
+        alert("Please set both Pickup and Destination points first.");
+        return;
+      }
+      const title = document.getElementById('booking-title');
+      if (title) title.textContent = 'Searching...';
+      if (statusHint) statusHint.textContent = 'Finding close drivers in your local area...';
+      bookBtn.textContent = 'Connecting...';
+      bookBtn.disabled = true;
 
-  if (!toggleBtn) return;
-
-  // 1. Polling engine: Check if a commuter placed a ride request
-  setInterval(() => {
-    const currentState = localStorage.getItem('trihatid_booking_state');
-    const isOnline = toggleBtn.style.color === 'rgb(46, 204, 113)';
-
-    if (isOnline && currentState === 'searching') {
-      requestBox.style.display = 'flex';
-      statusText.innerText = 'Passenger match discovered nearby!';
-    }
-  }, 1000); // Checks every second
-
-  // 2. Online/Offline Toggle logic
-  toggleBtn.addEventListener('click', () => {
-    const isOnline = toggleBtn.style.color === 'rgb(46, 204, 113)';
-
-    if (isOnline) {
-      toggleBtn.style.color = '#c0392b';
-      toggleBtn.innerText = '● OFFLINE';
-      statusText.innerText = 'Tap "OFFLINE" above to go online.';
-      requestBox.style.display = 'none';
-    } else {
-      toggleBtn.style.color = '#2ecc71';
-      toggleBtn.innerText = '● ONLINE';
-      statusText.innerText = 'Waiting for nearby commuters in Aklan...';
-    }
-  });
-
-  // 3. Driver Actions Logic
-  if (acceptBtn) {
-    acceptBtn.addEventListener('click', () => {
-      localStorage.setItem('trihatid_booking_state', 'accepted');
-      statusText.innerText = 'Trip accepted! Navigating to passenger...';
-      requestBox.style.display = 'none';
+      setTimeout(() => {
+        localStorage.setItem('trihatid_booking_state', 'searching');
+        window.location.href = 'searching.html';
+      }, 1000);
     });
   }
-
-  if (declineBtn) {
-    declineBtn.addEventListener('click', () => {
-      localStorage.removeItem('trihatid_booking_state');
-      statusText.innerText = 'Waiting for nearby commuters in Aklan...';
-      requestBox.style.display = 'none';
-    });
-  }
-}
-
-// Keep this execution line intact
-document.addEventListener('DOMContentLoaded', applyRoleAccessControl);
+});
