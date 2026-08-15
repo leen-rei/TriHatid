@@ -1,6 +1,6 @@
 {
   "appId": "com.trihatid.app",
   "appName": "TriHatid",
-  "webDir": "TriHatid",
+  "webDir": "TriHatid-src",
   "bundledWebRuntime": false
 }
