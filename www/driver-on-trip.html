@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - Driver On Trip</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .trip-card {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 88%;
+      max-width: 400px;
+      background-color: #ffffff;
+      padding: 18px 16px;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .status-badge {
+      background-color: #2e7d32;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      align-self: center;
+    }
+    .fare-box {
+      text-align: center;
+      margin: 8px 0;
+    }
+    .fare-amount {
+      font-size: 28px;
+      font-weight: 800;
+      color: #2e7d32;
+    }
+    .action-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .btn-secondary-action {
+      flex: 1;
+      padding: 10px;
+      background-color: #f0f0f0;
+      color: #333;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      text-decoration: none;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map" style="width: 100vw; height: 100vh; position: absolute; top: 0; left: 0;"></div>
+
+  <div class="trip-card">
+    <div class="status-badge">Trip in Progress</div>
+    
+    <div class="fare-box">
+      <p style="font-size: 11px; color: #666;">Expected Earnings</p>
+      <span class="fare-amount">₱ 40.00</span>
+    </div>
+
+    <div style="border-top: 1px solid #eee; padding-top: 10px; text-align: left;">
+      <span style="font-size: 11px; color: #666; display:block;">Passenger</span>
+      <span style="font-size: 14px; font-weight: 700; color: #1d1d1f;">Awaiting Destination</span>
+    </div>
+
+    <div class="action-row">
+      <a href="#" class="btn-secondary-action">Call</a>
+      <a href="#" class="btn-secondary-action">Chat</a>
+    </div>
+
+    <button type="button" id="complete-trip-btn" class="button1" style="background-color: #2e7d32; border:none; cursor:pointer; width:100%; text-align:center; margin-top:4px;">
+      Complete Trip
+    </button>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", async function () {
+    const map = L.map('map', { zoomControl: false }).setView([11.5833, 122.4833], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+    setTimeout(() => map.invalidateSize(), 200);
+
+    // Fetch passenger & destination info dynamically from Supabase
+    const rideId = localStorage.getItem('current_ride_id');
+    if (rideId) {
+      const { data: ride } = await _supabase
+        .from('rides')
+        .select('*, profiles:passenger_id(full_name)')
+        .eq('id', rideId)
+        .single();
+
+      if (ride) {
+        document.querySelector('.fare-amount').textContent = `₱ ${ride.fare}.00`;
+        const passengerLabel = document.querySelector('.trip-card div:nth-child(3) span:nth-child(2)');
+        if (passengerLabel) {
+          passengerLabel.textContent = `${ride.pickup} ➔ ${ride.destination}`;
+        }
+      }
+    }
+
+    document.getElementById('complete-trip-btn').addEventListener('click', async () => {
+      if (rideId) {
+        await _supabase.from('rides').update({ status: 'completed' }).eq('id', rideId);
+      }
+      window.location.href = "driver-dashboard.html";
+    });
+  });
+</script>
+</body>
+</html>

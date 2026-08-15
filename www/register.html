@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - Register</title>
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Supabase CDN and initialization (loaded once) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+</head>
+<body>
+  <form class="register-box">
+    <h1 class="title">TriHatid</h1>
+
+    <label class="label" for="role-select">I am registering as a:</label>
+    <select id="role-select" class="input1" style="margin-bottom: 4px; cursor: pointer;" autocomplete="off">
+      <option value="passenger">Passenger (Book Rides)</option>
+      <option value="driver">Driver (Accept Passengers)</option>
+    </select>
+    
+    <label class="label" for="fullname">Name</label>
+    <input type="text" id="fullname" placeholder="Juan Dela Cruz" class="input1" autocomplete="name" required>
+    
+    <label class="label" for="username">Username</label>
+    <input type="text" id="username" placeholder="@juan" class="input1" autocomplete="username">
+    
+    <label class="label" for="email">Email</label>
+    <input type="email" id="email" placeholder="example@email.com" class="input1" autocomplete="email" required>
+    
+    <label class="label" for="password">Password</label>
+    <input type="password" id="password" class="input1" autocomplete="new-password" required>
+    
+    <!-- Changed anchor tag to a real submit button -->
+    <button type="submit" class="button1" id="submit-btn" style="margin-top: 10px; border: none; width: 100%; cursor: pointer;">Sign Up</button>
+
+    <p class="switch-link">
+      Already have an account? <a href="login.html">Log In</a>
+    </p>
+  </form>
+
+<script>
+  document.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const fullName = document.getElementById('fullname').value.trim();
+    const roleSelect = document.getElementById('role-select');
+    const role = roleSelect ? roleSelect.value.toLowerCase().trim() : 'passenger';
+
+    // Sign up the user and pass metadata to the database trigger
+    const { data: authData, error: authError } = await _supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: {
+          fullname: fullName,
+          role: role
+        }
+      }
+    });
+
+    if (authError) {
+      alert("Registration failed: " + authError.message);
+      return;
+    }
+
+    alert("Registration successful! Please log in.");
+    window.location.href = 'login.html';
+  });
+</script>
+</body>
+</html>

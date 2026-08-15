@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - Home</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+  <div class="home-wrapper">
+    <!-- HOME MAP VIEW -->
+    <div id="view-home" class="view-content active">
+      <div class="map-container">
+        <div id="map"></div>
+      </div>
+
+      <!-- Passenger Booking Dashboard Overlay -->
+      <div id="passenger-dashboard-card" class="booking-card">
+        <h2 class="card-title" id="booking-title">Where to?</h2>
+        <p id="click-status" class="status-hint">Click map or type location in Aklan.</p>
+        
+        <form class="search-container" onsubmit="event.preventDefault(); searchLocation(document.getElementById('pickup-input').value, 'pickup');" style="margin-bottom: 2px;">
+          <input type="text" id="pickup-input" placeholder="Enter pickup location..." class="input1" autocomplete="off">
+        </form>
+
+        <form class="search-container" onsubmit="event.preventDefault(); searchLocation(document.getElementById('destination-input').value, 'destination');" style="margin-bottom: 2px;">
+          <input type="text" id="destination-input" placeholder="Enter destination location..." class="input1" autocomplete="off">
+        </form>
+
+        <button type="button" id="gps-btn" class="gps-button">Use My Current Location</button>
+        
+        <a href="ride-options.html" class="button1" id="book-btn">Request TriHatid</a>
+      </div>
+    </div>
+
+    <!-- ACTIVITY HISTORY -->
+    <!-- ACTIVITY HISTORY -->
+<div id="view-history" class="view-content">
+  <div class="panel-view">
+    <h2 class="panel-title">Activity History</h2>
+    <div id="passenger-history-list" style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="background: #fff; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div style="font-weight: 700;">Loading history...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- ACCOUNT -->
+    <div id="view-profile" class="view-content">
+      <div class="panel-view">
+        <h2 class="panel-title">Account</h2>
+        
+        <div class="profile-header">
+          <div class="profile-avatar">J</div>
+          <div>
+            <h3 style="margin: 0; font-size: 16px; color: #1d1d1f;">Juan Dela Cruz</h3>
+            <p id="profile-role-label" style="margin: 2px 0 0 0; font-size: 12px; color: #666; font-weight: 700; text-transform: capitalize;">Passenger</p>
+          </div>
+        </div>
+
+        <div class="profile-menu-item" onclick="alert('Profile configuration settings panel opening...');">
+          <span>Edit Profile</span>
+          <span style="color: #ccc;">❯</span>
+        </div>
+
+        <div class="profile-menu-item" onclick="localStorage.clear(); window.location.href='welcome.html';" style="color: #c62828;">
+          <span>Log Out</span>
+          <span>❯</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM NAVIGATION BAR -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" id="nav-home" onclick="switchView('home')">
+        <div class="nav-icon icon-home"></div>
+        <span>Home</span>
+      </button>
+      <button class="nav-item" id="nav-history" onclick="switchView('history')">
+        <div class="nav-icon icon-history"></div>
+        <span>History</span>
+      </button>
+      <button class="nav-item" id="nav-profile" onclick="switchView('profile')">
+        <div class="nav-icon icon-profile"></div>
+        <span>Account</span>
+      </button>
+    </nav>
+  </div> 
+
+  <!-- IN-APP LOCATION PERMISSION -->
+  <div id="locationModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">Allow Location Access?</div>
+      <div class="modal-body">
+        TriHatid collects location data to enable snapping points and tracking features even when the app window is minimized.
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="modal-deny" class="modal-btn btn-secondary">Don't Allow</button>
+        <button type="button" id="modal-allow" class="modal-btn btn-primary">Allow Access</button>
+      </div>
+    </div>
+  </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- 1. Load supabase library and bridge first -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+
+<!-- 2. Load map/script logic next -->
+<script src="script.js"></script>
+
+<script>
+  // Load passenger history dynamically
+  async function loadPassengerHistory() {
+    const { data: { user } } = await _supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: rides, error } = await _supabase
+      .from('rides')
+      .select('*')
+      .eq('passenger_id', user.id)
+      .eq('status', 'completed')
+      .order('id', { ascending: false });
+
+    const historyContainer = document.getElementById('passenger-history-list');
+    if (!historyContainer) return;
+
+    if (error || !rides || rides.length === 0) {
+      historyContainer.innerHTML = `<div style="background: #fff; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); font-weight: 700;">No trips completed yet</div>`;
+      return;
+    }
+
+    historyContainer.innerHTML = rides.map(ride => `
+      <div style="background: #fff; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div style="font-weight: 700;">${ride.pickup} ➔ ${ride.destination}</div>
+        <div style="font-size: 12px; color: #666; margin-top: 4px;">Completed • ${ride.ride_type}</div>
+        <div style="color: #214329; font-weight: 700; margin-top: 6px;">PHP ${ride.fare}.00</div>
+      </div>
+    `).join('');
+  }
+
+  // Dynamic Profile & Security Guard
+  document.addEventListener('DOMContentLoaded', async () => {
+    const role = localStorage.getItem('user_role');
+    if (role === 'driver') {
+      window.location.href = 'driver-dashboard.html';
+      return;
+    }
+
+    // Fetch live session user details from Supabase to update Account tab
+    const { data: { user } } = await _supabase.auth.getUser();
+    if (user) {
+      const metadata = user.user_metadata || {};
+      const fullName = metadata.fullname || localStorage.getItem('user_name') || 'User';
+
+      const profileNameEl = document.querySelector('#view-profile h3');
+      if (profileNameEl) profileNameEl.textContent = fullName;
+
+      const avatarEl = document.querySelector('.profile-avatar');
+      if (avatarEl && fullName) {
+        avatarEl.textContent = fullName.charAt(0).toUpperCase();
+      }
+    }
+
+    loadPassengerHistory();
+  });
+
+  const bookBtn = document.getElementById('book-btn');
+  if (bookBtn) {
+    bookBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const pickup = document.getElementById('pickup-input').value || 'Brgy. Poblacion, Kalibo';
+      const destination = document.getElementById('destination-input').value || 'Dumaguit Port';
+      
+      localStorage.setItem('trip_pickup', pickup);
+      localStorage.setItem('trip_destination', destination);
+      
+      window.location.href = "ride-options.html";
+    });
+  }
+</script>
+</body>
+</html>

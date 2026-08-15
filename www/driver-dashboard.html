@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - Driver Mode</title>
+  
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #ffffff;
+    }
+    .driver-wrapper {
+      position: relative;
+      width: 100vw;
+      height: calc(100vh - 75px);
+      overflow: hidden;
+    }
+    .driver-overlay-card {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      margin: 0 auto;
+      width: calc(100% - 32px);
+      background-color: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(8px);
+      padding: 18px 16px;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-sizing: border-box;
+    }
+    #driver-status-btn {
+      background: #ccc;
+      color: #333;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    #driver-status-btn.online {
+      background: #2e7d32;
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="driver-wrapper">
+    
+    <!-- MAP & STATUS OVERLAY -->
+    <div id="view-home" class="view-content active">
+      <div class="map-container">
+        <div id="map"></div>
+      </div>
+
+      <div class="driver-overlay-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0; font-size: 18px; color: #214329;">Driver Mode</h2>
+          <button id="driver-status-btn" type="button">OFFLINE</button>
+        </div>
+        <p id="driver-status-text" style="margin: 0; font-size: 12px; color: #555;">You are offline. Go online to receive ride requests.</p>
+      </div>
+    </div>
+
+    <!-- ACTIVITY HISTORY -->
+    <!-- ACTIVITY HISTORY -->
+<div id="view-history" class="view-content">
+  <div class="panel-view">
+    <h2 class="panel-title">Activity History</h2>
+    <div id="driver-history-list" style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="background: #fff; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div style="font-weight: 700;">Loading driver history...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- DRIVER PROFILE -->
+    <div id="view-profile" class="view-content">
+      <div class="panel-view">
+        <h2 class="panel-title">Account</h2>
+        
+        <div class="profile-header">
+          <div class="profile-avatar">J</div>
+          <div>
+            <h3 style="margin: 0; font-size: 16px; color: #1d1d1f;">Juan Dela Cruz</h3>
+            <p style="margin: 2px 0 0 0; font-size: 12px; color: #666; font-weight: 700;">Tricycle Driver</p>
+          </div>
+        </div>
+
+        <div class="profile-menu-item" onclick="alert('Profile configuration settings panel opening...');">
+          <span>Edit Profile</span>
+          <span style="color: #ccc;">❯</span>
+        </div>
+
+        <div class="profile-menu-item" onclick="localStorage.clear(); window.location.href='welcome.html';" style="color: #c62828;">
+          <span>Log Out</span>
+          <span>❯</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM NAVIGATION BAR -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" id="nav-home" onclick="switchView('home')" type="button">
+        <div class="nav-icon icon-home"></div>
+        <span>Home</span>
+      </button>
+      <button class="nav-item" id="nav-history" onclick="switchView('history')" type="button">
+        <div class="nav-icon icon-history"></div>
+        <span>History</span>
+      </button>
+      <button class="nav-item" id="nav-profile" onclick="switchView('profile')" type="button">
+        <div class="nav-icon icon-profile"></div>
+        <span>Account</span>
+      </button>
+    </nav>
+
+  </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script>
+  let map;
+  let activeRideId = null;
+
+  // Access Control Guard & Dynamic Profile Loader
+  document.addEventListener('DOMContentLoaded', async () => {
+    const role = localStorage.getItem('user_role');
+    if (role !== 'driver') {
+      alert("Unauthorized access. Redirecting to passenger home.");
+      window.location.href = 'home.html';
+      return;
+    }
+
+    // Fetch live driver details from Supabase Auth to update Account tab dynamically
+    const { data: { user } } = await _supabase.auth.getUser();
+    if (user) {
+      const metadata = user.user_metadata || {};
+      const fullName = metadata.fullname || localStorage.getItem('user_name') || 'Driver';
+
+      const profileNameEl = document.querySelector('#view-profile h3');
+      if (profileNameEl) profileNameEl.textContent = fullName;
+
+      const avatarEl = document.querySelector('.profile-avatar');
+      if (avatarEl && fullName) {
+        avatarEl.textContent = fullName.charAt(0).toUpperCase();
+      }
+    }
+
+    loadDriverHistory();
+
+    // Initialize Map
+    map = L.map('map', { zoomControl: false }).setView([11.7084, 122.3642], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    const statusBtn = document.getElementById('driver-status-btn');
+    const statusText = document.getElementById('driver-status-text');
+    let isOnline = false;
+    let pollTimer = null;
+
+    if (statusBtn) {
+      statusBtn.addEventListener('click', async () => {
+        isOnline = !isOnline;
+        if (isOnline) {
+          statusBtn.textContent = 'ONLINE';
+          statusBtn.classList.add('online');
+          statusText.textContent = 'Active. Scanning for passengers...';
+
+          // Poll for searching rides
+          pollTimer = setInterval(async () => {
+            const { data, error } = await _supabase
+              .from('rides')
+              .select('*')
+              .eq('status', 'searching')
+              .limit(1);
+
+            if (data && data.length > 0) {
+              const ride = data[0];
+              activeRideId = ride.id;
+              statusText.innerHTML = `<b>Request found!</b><br>${ride.pickup} ➔ ${ride.destination}<br>Fare: ₱${ride.fare} <button id="accept-trip" style="background:#2e7d32;color:#fff;border:none;padding:4px 8px;border-radius:6px;cursor:pointer;margin-top:4px;">Accept Ride</button>`;
+              
+              document.getElementById('accept-trip').onclick = async () => {
+                const { data: { user } } = await _supabase.auth.getUser();
+                await _supabase.from('rides').update({ 
+                  status: 'accepted',
+                  driver_id: user ? user.id : null
+                }).eq('id', activeRideId);
+
+                localStorage.setItem('current_ride_id', activeRideId);
+                window.location.href = "driver-on-trip.html";
+              };
+            }
+          }, 3000);
+
+        } else {
+          statusBtn.textContent = 'OFFLINE';
+          statusBtn.classList.remove('online');
+          statusText.textContent = 'You are offline. Go online to receive ride requests.';
+          if (pollTimer) clearInterval(pollTimer);
+        }
+      });
+    }
+  });
+
+  function switchView(viewName) {
+    document.querySelectorAll('.view-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    document.getElementById(`view-${viewName}`).classList.add('active');
+    document.getElementById(`nav-${viewName}`).classList.add('active');
+    if (viewName === 'home' && map) setTimeout(() => map.invalidateSize(), 150);
+  }
+
+  async function loadDriverHistory() {
+    const { data: { user } } = await _supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: rides, error } = await _supabase
+      .from('rides')
+      .select('*')
+      .eq('driver_id', user.id)
+      .eq('status', 'completed')
+      .order('id', { ascending: false });
+
+    const historyContainer = document.getElementById('driver-history-list');
+    if (!historyContainer) return;
+
+    if (error || !rides || rides.length === 0) {
+      historyContainer.innerHTML = `<div style="background: #fff; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); font-weight: 700;">No trips completed yet</div>`;
+      return;
+    }
+
+    historyContainer.innerHTML = rides.map(ride => `
+      <div style="background: #fff; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div style="font-weight: 700;">${ride.pickup} ➔ ${ride.destination}</div>
+        <div style="font-size: 12px; color: #666; margin-top: 4px;">Earned Fare</div>
+        <div style="color: #2e7d32; font-weight: 700; margin-top: 6px;">PHP ${ride.fare}.00</div>
+      </div>
+    `).join('');
+  }
+</script>
+</script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - Choose a Ride</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .ride-container {
+      padding: 24px 20px; 
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      height: 100vh;
+      width: 100vw;
+      overflow-y: auto;
+      box-sizing: border-box;
+      background-color: #ffffff;
+    }
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    .back-arrow {
+      text-decoration: none;
+      font-size: 20px;
+      color: #333;
+      font-weight: bold;
+    }
+    .page-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1d1d1f;
+    }
+    .ride-option-card {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background-color: #ffffff;
+    }
+    .ride-option-card.selected {
+      border-color: #214329;
+      background-color: #f4f7f5;
+    }
+    .ride-icon {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%; 
+      object-fit: cover;   
+      margin-right: 16px;
+    }
+    .ride-details {
+      flex: 1;
+      text-align: left;
+    }
+    .ride-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1d1d1f;
+    }
+    .ride-price-info {
+      text-align: right;
+    }
+    .ride-fare {
+      font-size: 15px;
+      font-weight: 700;
+      color: #214329;
+    }
+    .ride-label {
+      font-size: 10px;
+      color: #888;
+    }
+    .payment-section {
+      margin-top: 10px;
+      border-top: 1px solid #eee;
+      padding-top: 16px;
+      text-align: left;
+    }
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .payment-selector {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="ride-container">
+    <div class="header-row">
+      <a href="home.html" class="back-arrow">✕</a>
+      <h2 class="page-title">Choose a ride</h2>
+    </div>
+
+    <!-- Regular -->
+    <div class="ride-option-card selected">
+      <img src="regular.jpg" class="ride-icon" alt="Regular">
+      <div class="ride-details">
+        <span class="ride-name">Regular</span>
+      </div>
+      <div class="ride-price-info">
+        <span class="ride-fare">₱ 40.00</span>
+        <p class="ride-label">Base fare</p>
+      </div>
+    </div>
+
+    <!-- Special -->
+    <div class="ride-option-card">
+      <img src="special.jpg" class="ride-icon" alt="Special">
+      <div class="ride-details">
+        <span class="ride-name">Special</span>
+      </div>
+      <div class="ride-price-info">
+        <span class="ride-fare">₱ 60.00</span>
+        <p class="ride-label">Base fare</p>
+      </div>
+    </div>
+
+    <div class="payment-section">
+      <p class="section-label">Payment method</p>
+      <div class="payment-selector">
+        <span>Cash</span>
+        <span style="color: #888; font-size: 10px;">❯</span>
+      </div>
+    </div>
+
+    <button type="button" id="confirm-ride-btn" class="button1" style="margin-top: auto;">
+      Confirm Ride
+    </button>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script>
+  let selectedType = 'Regular';
+  let selectedFare = 40;
+
+  const cards = document.querySelectorAll('.ride-option-card');
+  cards.forEach(card => {
+    card.addEventListener('click', () => {
+      cards.forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      const name = card.querySelector('.ride-name').textContent;
+      selectedType = name;
+      selectedFare = name === 'Special' ? 60 : 40;
+    });
+  });
+
+  document.getElementById('confirm-ride-btn').addEventListener('click', async function() {
+    const pickup = localStorage.getItem('trip_pickup') || 'Kalibo Public Market';
+    const destination = localStorage.getItem('trip_destination') || 'Kalibo Airport';
+    
+    const { data: { user } } = await _supabase.auth.getUser();
+
+    // Insert ride request into Supabase
+    const { data, error } = await _supabase.from('rides').insert([
+      {
+        passenger_id: user ? user.id : null,
+        pickup: pickup,
+        destination: destination,
+        ride_type: selectedType,
+        fare: selectedFare,
+        status: 'searching'
+      }
+    ]).select().single();
+
+    if (!error && data) {
+      localStorage.setItem('current_ride_id', data.id);
+    }
+
+    localStorage.setItem('trihatid_booking_state', 'searching');
+    window.location.href = "searching.html";
+  });
+</script>
+</body>
+</html>

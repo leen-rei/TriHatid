@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - Rate Ride</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .rating-card {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 88%;
+      max-width: 400px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 12px;
+      box-sizing: border-box;
+      background-color: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      z-index: 1000;
+    }
+    .big-avatar {
+      width: 75px;
+      height: 75px;
+      border-radius: 50%;
+      background-color: #eee;
+      margin-bottom: 4px;
+    }
+    .stars-row {
+      display: flex;
+      gap: 8px;
+      margin: 8px 0;
+    }
+    .star {
+      font-size: 28px;
+      color: #f1c40f;
+      cursor: pointer;
+    }
+    .feedback-input {
+      width: 100%;
+      height: 70px;
+      padding: 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      background-color: #f8f9fa;
+      font-size: 12px;
+      outline: none;
+      resize: none;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background Map Container -->
+  <div id="map" style="width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1;"></div>
+
+  <!-- Rating Card Overlay -->
+  <div class="rating-card">
+    <h2 class="welcome-title" style="font-size: 20px; margin: 0;">Rate your ride</h2>
+    
+    <div class="big-avatar"></div>
+    
+    <div>
+      <span class="driver-name" style="font-size: 15px; display:block; font-weight: 700; color: #1d1d1f;">Juan Dela Cruz</span>
+    </div>
+
+    <div class="stars-row">
+      <span class="star">★</span>
+      <span class="star">★</span>
+      <span class="star">★</span>
+      <span class="star">★</span>
+      <span class="star">★</span>
+    </div>
+
+    <p style="font-size: 12px; font-weight: 700; color: #214329; align-self: flex-start; margin: 0;">Feedback:</p>
+
+    <textarea class="feedback-input" name="feedback" id="feedback" placeholder="Write an optional comment..."></textarea>
+
+    <a href="home.html" class="button1" style="width:100%; text-align: center; text-decoration: none; margin-top: 4px; display: block; box-sizing: border-box;">
+      Submit
+    </a>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script>
+  let currentRating = 5;
+  const stars = document.querySelectorAll('.star');
+  
+  stars.forEach((star, index) => {
+    star.addEventListener('click', () => {
+      currentRating = index + 1;
+      stars.forEach((s, i) => {
+        s.style.color = i < currentRating ? '#f1c40f' : '#ccc';
+      });
+    });
+  });
+
+  document.querySelector('.button1').addEventListener('click', async function(e) {
+    e.preventDefault();
+    const rideId = localStorage.getItem('current_ride_id');
+    const feedbackText = document.getElementById('feedback').value;
+
+    if (rideId) {
+      await _supabase.from('rides').update({
+        status: 'completed',
+        rating: currentRating,
+        feedback: feedbackText
+      }).eq('id', rideId);
+    }
+
+    localStorage.removeItem('current_ride_id');
+    localStorage.removeItem('trihatid_booking_state');
+    window.location.href = "home.html";
+  });
+
+  // Submit Trip Rating to Supabase
+async function submitTripRating(ratingScore, feedbackText) {
+  const rideId = localStorage.getItem('current_ride_id');
+  if (!rideId) {
+    alert("No active ride found to rate.");
+    return;
+  }
+
+  const { error } = await _supabase
+    .from('rides')
+    .update({ 
+      rating: ratingScore, 
+      feedback: feedbackText,
+      status: 'rated' 
+    })
+    .eq('id', rideId);
+
+  if (error) {
+    alert("Failed to submit rating: " + error.message);
+  } else {
+    alert("Thank you for your feedback!");
+    localStorage.removeItem('current_ride_id');
+    window.location.href = 'home.html';
+  }
+}
+</script>
+</body>
+</html>
