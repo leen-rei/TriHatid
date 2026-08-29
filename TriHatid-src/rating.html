@@ -40,6 +40,13 @@
       border-radius: 50%;
       background-color: #eee;
       margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: bold;
+      color: #555;
+      overflow: hidden;
     }
     .stars-row {
       display: flex;
@@ -48,8 +55,9 @@
     }
     .star {
       font-size: 28px;
-      color: #f1c40f;
+      color: #ccc;
       cursor: pointer;
+      transition: color 0.2s;
     }
     .feedback-input {
       width: 100%;
@@ -67,95 +75,117 @@
 </head>
 <body>
 
-  <!-- Background Map Container -->
   <div id="map" style="width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1;"></div>
 
-  <!-- Rating Card Overlay -->
   <div class="rating-card">
     <h2 class="welcome-title" style="font-size: 20px; margin: 0;">Rate your ride</h2>
     
-    <div class="big-avatar"></div>
+    <div class="big-avatar">D</div>
     
     <div>
-      <span class="driver-name" style="font-size: 15px; display:block; font-weight: 700; color: #1d1d1f;">Juan Dela Cruz</span>
+      <span class="driver-name" style="font-size: 15px; display:block; font-weight: 700; color: #1d1d1f;">Loading driver...</span>
     </div>
 
     <div class="stars-row">
-      <span class="star">★</span>
-      <span class="star">★</span>
-      <span class="star">★</span>
-      <span class="star">★</span>
-      <span class="star">★</span>
+      <span class="star" data-value="1">★</span>
+      <span class="star" data-value="2">★</span>
+      <span class="star" data-value="3">★</span>
+      <span class="star" data-value="4">★</span>
+      <span class="star" data-value="5">★</span>
     </div>
 
     <p style="font-size: 12px; font-weight: 700; color: #214329; align-self: flex-start; margin: 0;">Feedback:</p>
 
     <textarea class="feedback-input" name="feedback" id="feedback" placeholder="Write an optional comment..."></textarea>
 
-    <a href="home.html" class="button1" style="width:100%; text-align: center; text-decoration: none; margin-top: 4px; display: block; box-sizing: border-box;">
+    <button type="button" class="button1" id="submit-rating-btn" style="width:100%; text-align: center; text-decoration: none; margin-top: 4px; display: block; box-sizing: border-box; border:none; cursor:pointer;">
       Submit
-    </a>
+    </button>
+
+    <button onclick="window.location.href='report.html'" style="background:none; border:none; color:#c62828; font-weight:700; cursor:pointer; margin-top:10px;">
+      Report an Issue with Driver
+    </button>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <script>
-  let currentRating = 5;
-  const stars = document.querySelectorAll('.star');
-  
-  stars.forEach((star, index) => {
-    star.addEventListener('click', () => {
-      currentRating = index + 1;
-      stars.forEach((s, i) => {
-        s.style.color = i < currentRating ? '#f1c40f' : '#ccc';
-      });
-    });
-  });
+  let map;
+  let currentRating = 0; 
 
-  document.querySelector('.button1').addEventListener('click', async function(e) {
-    e.preventDefault();
-    const rideId = localStorage.getItem('current_ride_id');
-    const feedbackText = document.getElementById('feedback').value;
+  document.addEventListener('DOMContentLoaded', async () => {
+    map = L.map('map', { zoomControl: false, attributionControl: false }).setView([11.59, 122.37], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-    if (rideId) {
-      await _supabase.from('rides').update({
-        status: 'completed',
-        rating: currentRating,
-        feedback: feedbackText
-      }).eq('id', rideId);
+    const { data: { user } } = await _supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: rideData } = await _supabase
+      .from('rides')
+      .select('*')
+      .eq('passenger_id', user.id)
+      .order('id', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!rideData) {
+      document.querySelector('.driver-name').textContent = 'Tricycle Driver';
+      return;
     }
 
-    localStorage.removeItem('current_ride_id');
-    localStorage.removeItem('trihatid_booking_state');
-    window.location.href = "home.html";
+    const activeRideId = rideData.id;
+
+    if (rideData.driver_id) {
+      const { data: profileData } = await _supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', rideData.driver_id)
+        .maybeSingle();
+
+      const driverName = profileData?.fullname || profileData?.full_name || rideData.driver_name || 'Tricycle Driver';
+      document.querySelector('.driver-name').textContent = driverName;
+      
+      // Automatically checks every possible column name for your avatar image
+      const driverAvatar = profileData?.avatar_url || profileData?.avatar || profileData?.photo_url || profileData?.profile_pic || rideData.driver_avatar_url || null;
+      
+      const avatarEl = document.querySelector('.big-avatar');
+      if (avatarEl && driverAvatar) {
+        avatarEl.innerHTML = `<img src="${driverAvatar}" alt="Driver" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+      } else if (avatarEl) {
+        avatarEl.textContent = driverName.charAt(0).toUpperCase();
+      }
+    }
+
+    const stars = document.querySelectorAll('.star');
+    stars.forEach((star, index) => {
+      star.addEventListener('click', () => {
+        currentRating = index + 1;
+        stars.forEach((s, i) => {
+          s.style.color = i < currentRating ? '#f1c40f' : '#ccc';
+        });
+      });
+    });
+
+    document.getElementById('submit-rating-btn').addEventListener('click', async function(e) {
+      e.preventDefault();
+      if (currentRating === 0) {
+        alert("Please tap a star rating before submitting.");
+        return;
+      }
+
+      const feedbackText = document.getElementById('feedback').value;
+
+      if (activeRideId) {
+        await _supabase.from('rides').update({
+          rating: currentRating,
+          feedback: feedbackText
+        }).eq('id', activeRideId);
+      }
+
+      window.location.href = "home.html";
+    });
   });
-
-  // Submit Trip Rating to Supabase
-async function submitTripRating(ratingScore, feedbackText) {
-  const rideId = localStorage.getItem('current_ride_id');
-  if (!rideId) {
-    alert("No active ride found to rate.");
-    return;
-  }
-
-  const { error } = await _supabase
-    .from('rides')
-    .update({ 
-      rating: ratingScore, 
-      feedback: feedbackText,
-      status: 'rated' 
-    })
-    .eq('id', rideId);
-
-  if (error) {
-    alert("Failed to submit rating: " + error.message);
-  } else {
-    alert("Thank you for your feedback!");
-    localStorage.removeItem('current_ride_id');
-    window.location.href = 'home.html';
-  }
-}
 </script>
 </body>
 </html>

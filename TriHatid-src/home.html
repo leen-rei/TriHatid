@@ -60,15 +60,15 @@
           </div>
         </div>
 
-        <div class="profile-menu-item" onclick="alert('Profile configuration settings panel opening...');">
-          <span>Edit Profile</span>
-          <span style="color: #ccc;">❯</span>
-        </div>
+<div class="profile-menu-item" onclick="window.location.href='edit-profile.html';">
+  <span>Edit Profile</span>
+  <span style="color: #ccc;">❯</span>
+</div>
 
-        <div class="profile-menu-item" onclick="localStorage.clear(); window.location.href='welcome.html';" style="color: #c62828;">
-          <span>Log Out</span>
-          <span>❯</span>
-        </div>
+        <div class="profile-menu-item" onclick="handleLogout()" style="color: #c62828;">
+  <span>Log Out</span>
+  <span>❯</span>
+</div>
       </div>
     </div>
 
@@ -141,7 +141,7 @@
     `).join('');
   }
 
-  // Dynamic Profile & Security Guard
+// Dynamic Profile & Security Guard
   document.addEventListener('DOMContentLoaded', async () => {
     const role = localStorage.getItem('user_role');
     if (role === 'driver') {
@@ -158,9 +158,14 @@
       const profileNameEl = document.querySelector('#view-profile h3');
       if (profileNameEl) profileNameEl.textContent = fullName;
 
+      // Update avatar text or render image if avatar_url exists
       const avatarEl = document.querySelector('.profile-avatar');
-      if (avatarEl && fullName) {
-        avatarEl.textContent = fullName.charAt(0).toUpperCase();
+      if (avatarEl) {
+        if (metadata.avatar_url) {
+          avatarEl.innerHTML = `<img src="${metadata.avatar_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        } else if (fullName) {
+          avatarEl.textContent = fullName.charAt(0).toUpperCase();
+        }
       }
     }
 
@@ -180,6 +185,12 @@
       window.location.href = "ride-options.html";
     });
   }
+
+  async function handleLogout() {
+  await _supabase.auth.signOut();
+  localStorage.clear();
+  window.location.href = 'welcome.html';
+}
 </script>
 </body>
 </html>

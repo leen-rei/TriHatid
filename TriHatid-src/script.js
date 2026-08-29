@@ -221,41 +221,65 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function executeSystemGeolocation() {
-    if (!navigator.geolocation) {
-      alert('Geolocation feature not supported by this browser runtime environment.');
-      return;
-    }
+  async function executeSystemGeolocation() {
     if (statusHint) statusHint.innerText = "Locating your GPS position...";
     if (gpsBtn) gpsBtn.textContent = 'Locating...';
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        pickupCoords = [lat, lng];
-        const placeName = await reverseGeocode(lat, lng);
+    try {
+      let lat, lng;
 
-        if (pickupMarker) map.removeLayer(pickupMarker);
-        if (routeLine) map.removeLayer(routeLine);
+      // Check if running in a native Capacitor environment
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
+        const permissionStatus = await window.Capacitor.Plugins.Geolocation.requestPermissions();
+        
+        if (permissionStatus.location !== 'granted') {
+          alert('Location permission denied.');
+          if (gpsBtn) gpsBtn.textContent = 'Use My Current Location';
+          if (statusHint) statusHint.innerText = "Location permission denied. Tap map to set pickup.";
+          return;
+        }
 
-        pickupMarker = L.marker(pickupCoords).addTo(map);
-        pickupMarker._icon?.classList.add("pickup-style");
-        pickupMarker.bindPopup(`<b>Your Location:</b> ${placeName}`).openPopup();
-        map.setView(pickupCoords, 16);
+        const coordinates = await window.Capacitor.Plugins.Geolocation.getCurrentPosition({
+          enableHighAccuracy: true
+        });
+        lat = coordinates.coords.latitude;
+        lng = coordinates.coords.longitude;
+      } else {
+        // Fallback for standard web browser environment
+        if (!navigator.geolocation) {
+          alert('Geolocation feature not supported by this browser runtime environment.');
+          if (gpsBtn) gpsBtn.textContent = 'Use My Current Location';
+          return;
+        }
 
-        if (pickupInput) pickupInput.value = placeName;
-        if (gpsBtn) gpsBtn.textContent = 'Use My Current Location';
-        if (statusHint) statusHint.innerText = "Current location set! Select destination.";
-        selectionStep = 1;
-      },
-      (err) => {
-        alert('Location data fetch permission denied or timed out.');
-        if (gpsBtn) gpsBtn.textContent = 'Use My Current Location';
-        if (statusHint) statusHint.innerText = "GPS error. Tap map to set pickup.";
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
+        });
+        lat = position.coords.latitude;
+        lng = position.coords.longitude;
+      }
+
+      pickupCoords = [lat, lng];
+      const placeName = await reverseGeocode(lat, lng);
+
+      if (pickupMarker) map.removeLayer(pickupMarker);
+      if (routeLine) map.removeLayer(routeLine);
+
+      pickupMarker = L.marker(pickupCoords).addTo(map);
+      pickupMarker._icon?.classList.add("pickup-style");
+      pickupMarker.bindPopup(`<b>Your Location:</b> ${placeName}`).openPopup();
+      map.setView(pickupCoords, 16);
+
+      if (pickupInput) pickupInput.value = placeName;
+      if (gpsBtn) gpsBtn.textContent = 'Use My Current Location';
+      if (statusHint) statusHint.innerText = "Current location set! Select destination.";
+      selectionStep = 1;
+
+    } catch (err) {
+      alert('Location data fetch permission denied or timed out: ' + (err.message || err));
+      if (gpsBtn) gpsBtn.textContent = 'Use My Current Location';
+      if (statusHint) statusHint.innerText = "GPS error. Tap map to set pickup.";
+    }
   }
 
   if (bookBtn) {
@@ -277,3 +301,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// Global Android Hardware Back Button Handler for Capacitor
+document.addEventListener('deviceready', initCapacitorBackButton, false);
+
+// Fallback if deviceready already fired
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  initCapacitorBackButton();
+} else {
+  window.addEventListener('DOMContentLoaded', initCapacitorBackButton);
+}
+
+function initCapacitorBackButton() {
+  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.addListener('backButton', ({ canGoBack }) => {
+      const path = window.location.pathname;
+      
+      // If the user is on the main dashboard screens, ask if they want to exit the app
+      if (path.endsWith('home.html') || path.endsWith('driver-dashboard.html')) {
+        const confirmExit = confirm("Do you want to exit TriHatid?");
+        if (confirmExit) {
+          window.Capacitor.Plugins.App.exitApp();
+        }
+      } else if (window.history.length > 1) {
+        // If there is history inside the app, go back to the previous screen
+        window.history.back();
+      } else {
+        // Default fallback to home
+        window.location.href = 'home.html';
+      }
+    });
+  }
+}

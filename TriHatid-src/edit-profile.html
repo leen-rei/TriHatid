@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - Edit Profile</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="register-box">
+    <h1 class="title" style="font-size: 20px;">Edit Profile</h1>
+
+    <label class="label" for="update-name">Full Name</label>
+    <input type="text" id="update-name" class="input1" required>
+
+    <label class="label" for="avatar-file">Profile Picture</label>
+    <input type="file" id="avatar-file" class="input1" accept="image/*" style="padding: 8px;">
+
+    <button type="button" id="save-profile-btn" class="button1" style="margin-top: 15px;">Save Changes</button>
+    <a href="home.html" class="switch-link" style="display: block; text-align: center; margin-top: 10px; text-decoration: none;">Back to Home</a>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const { data: { user } } = await _supabase.auth.getUser();
+      if (user) {
+        const metadata = user.user_metadata || {};
+        document.getElementById('update-name').value = metadata.fullname || '';
+      }
+    });
+
+    document.getElementById('save-profile-btn').addEventListener('click', async () => {
+      console.log("--- SAVE BUTTON CLICKED ---");
+      const fullName = document.getElementById('update-name').value.trim();
+      const fileInput = document.getElementById('avatar-file');
+      
+      const { data: { user } } = await _supabase.auth.getUser();
+      if (!user) {
+        alert("You must be logged in.");
+        return;
+      }
+
+      let avatarUrl = user.user_metadata?.avatar_url || null;
+
+      // 1. Upload new image if file chosen
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const filePath = `${user.id}/${Date.now()}_${file.name}`;
+        
+        const { error: uploadError } = await _supabase.storage
+          .from('avatars')
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) {
+          alert("Error uploading image: " + uploadError.message);
+          return;
+        }
+
+        const { data: publicUrlData } = _supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+
+        avatarUrl = publicUrlData.publicUrl;
+      }
+
+      // 2. Save everything directly to Supabase Auth Metadata (Bypassing tables & 403 errors entirely)
+      const { error: authError } = await _supabase.auth.updateUser({
+        data: { 
+          fullname: fullName, 
+          avatar_url: avatarUrl 
+        }
+      });
+
+      if (authError) {
+        alert("Failed to update profile: " + authError.message);
+        return;
+      }
+
+      alert("Profile updated successfully!");
+      const role = user.user_metadata?.role || 'passenger';
+      window.location.href = role === 'driver' ? 'driver-dashboard.html' : 'home.html';
+    });
+  </script>
+</body>
+</html>

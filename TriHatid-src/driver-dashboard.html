@@ -73,21 +73,22 @@
           <button id="driver-status-btn" type="button">OFFLINE</button>
         </div>
         <p id="driver-status-text" style="margin: 0; font-size: 12px; color: #555;">You are offline. Go online to receive ride requests.</p>
+        
+        <div id="requests-list-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;"></div>
       </div>
     </div>
 
     <!-- ACTIVITY HISTORY -->
-    <!-- ACTIVITY HISTORY -->
-<div id="view-history" class="view-content">
-  <div class="panel-view">
-    <h2 class="panel-title">Activity History</h2>
-    <div id="driver-history-list" style="display: flex; flex-direction: column; gap: 10px;">
-      <div style="background: #fff; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-        <div style="font-weight: 700;">Loading driver history...</div>
+    <div id="view-history" class="view-content">
+      <div class="panel-view">
+        <h2 class="panel-title">Activity History</h2>
+        <div id="driver-history-list" style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="background: #fff; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div style="font-weight: 700;">Loading driver history...</div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
 
     <!-- DRIVER PROFILE -->
     <div id="view-profile" class="view-content">
@@ -102,12 +103,12 @@
           </div>
         </div>
 
-        <div class="profile-menu-item" onclick="alert('Profile configuration settings panel opening...');">
+        <div class="profile-menu-item" onclick="window.location.href='edit-profile.html';">
           <span>Edit Profile</span>
           <span style="color: #ccc;">❯</span>
         </div>
 
-        <div class="profile-menu-item" onclick="localStorage.clear(); window.location.href='welcome.html';" style="color: #c62828;">
+        <div class="profile-menu-item" onclick="handleLogout()" style="color: #c62828;">
           <span>Log Out</span>
           <span>❯</span>
         </div>
@@ -137,9 +138,10 @@
 <script src="supabase.js"></script>
 <script>
   let map;
-  let activeRideId = null;
+  let driverMarker = null;
+  let requestMarker = null; 
+  let lastSelectedRideId = null;
 
-  // Access Control Guard & Dynamic Profile Loader
   document.addEventListener('DOMContentLoaded', async () => {
     const role = localStorage.getItem('user_role');
     if (role !== 'driver') {
@@ -148,7 +150,6 @@
       return;
     }
 
-    // Fetch live driver details from Supabase Auth to update Account tab dynamically
     const { data: { user } } = await _supabase.auth.getUser();
     if (user) {
       const metadata = user.user_metadata || {};
@@ -158,19 +159,57 @@
       if (profileNameEl) profileNameEl.textContent = fullName;
 
       const avatarEl = document.querySelector('.profile-avatar');
-      if (avatarEl && fullName) {
-        avatarEl.textContent = fullName.charAt(0).toUpperCase();
+      if (avatarEl) {
+        if (metadata.avatar_url) {
+          avatarEl.innerHTML = `<img src="${metadata.avatar_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        } else if (fullName) {
+          avatarEl.textContent = fullName.charAt(0).toUpperCase();
+        }
       }
     }
 
     loadDriverHistory();
 
-    // Initialize Map
-    map = L.map('map', { zoomControl: false }).setView([11.7084, 122.3642], 15);
+    map = L.map('map', { zoomControl: false }).setView([11.59, 122.37], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap'
     }).addTo(map);
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        map.setView([lat, lng], 16);
+
+        const driverIcon = L.divIcon({
+          className: 'custom-driver-pin',
+          html: `<div style="background-color: #2e7d32; width: 18px; height: 18px; border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        driverMarker = L.marker([lat, lng], { icon: driverIcon }).addTo(map).bindPopup("You are here");
+      }, (err) => {
+        console.warn("Initial geolocation failed: ", err.message);
+      }, { enableHighAccuracy: true });
+
+      navigator.geolocation.watchPosition((position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        if (driverMarker) {
+          driverMarker.setLatLng([lat, lng]);
+        } else {
+          const driverIcon = L.divIcon({
+            className: 'custom-driver-pin',
+            html: `<div style="background-color: #2e7d32; width: 18px; height: 18px; border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+          driverMarker = L.marker([lat, lng], { icon: driverIcon }).addTo(map).bindPopup("You are here");
+        }
+      }, null, { enableHighAccuracy: true });
+    }
 
     const statusBtn = document.getElementById('driver-status-btn');
     const statusText = document.getElementById('driver-status-text');
@@ -185,29 +224,39 @@
           statusBtn.classList.add('online');
           statusText.textContent = 'Active. Scanning for passengers...';
 
-          // Poll for searching rides
           pollTimer = setInterval(async () => {
             const { data, error } = await _supabase
               .from('rides')
               .select('*')
               .eq('status', 'searching')
-              .limit(1);
+              .order('id', { ascending: false });
+
+            const container = document.getElementById('requests-list-container');
+            if (!container) return;
 
             if (data && data.length > 0) {
-              const ride = data[0];
-              activeRideId = ride.id;
-              statusText.innerHTML = `<b>Request found!</b><br>${ride.pickup} ➔ ${ride.destination}<br>Fare: ₱${ride.fare} <button id="accept-trip" style="background:#2e7d32;color:#fff;border:none;padding:4px 8px;border-radius:6px;cursor:pointer;margin-top:4px;">Accept Ride</button>`;
-              
-              document.getElementById('accept-trip').onclick = async () => {
-                const { data: { user } } = await _supabase.auth.getUser();
-                await _supabase.from('rides').update({ 
-                  status: 'accepted',
-                  driver_id: user ? user.id : null
-                }).eq('id', activeRideId);
+              statusText.textContent = `Active. Found ${data.length} active request(s)...`;
 
-                localStorage.setItem('current_ride_id', activeRideId);
-                window.location.href = "driver-on-trip.html";
-              };
+              container.innerHTML = data.map(ride => `
+                <div onclick="toggleRequestPin('${ride.id}', '${ride.pickup}', ${ride.pickup_lat || 11.59}, ${ride.pickup_lng || 122.37})" style="background: #f8f9fa; padding: 12px; border-radius: 12px; border: 1px solid #ddd; display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; cursor: pointer; transition: background 0.2s;">
+                  <div>
+                    <div style="font-size: 13px; font-weight: 700; color: #214329;">${ride.pickup} ➔ ${ride.destination}</div>
+                    <div style="font-size: 11px; color: #2e7d32; font-weight: 600; margin-top: 2px;">₱${ride.fare}.00 (${ride.ride_type || 'Standard'})</div>
+                  </div>
+                  <div style="display: flex; gap: 8px;" onclick="event.stopPropagation();">
+                    <button onclick="acceptRide('${ride.id}')" style="flex: 1; background:#2e7d32; color:#fff; border:none; padding:8px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold;">Accept</button>
+                    <button onclick="declineRide('${ride.id}')" style="flex: 1; background:#c62828; color:#fff; border:none; padding:8px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold;">Decline</button>
+                  </div>
+                </div>
+              `).join('');
+            } else {
+              container.innerHTML = '';
+              statusText.textContent = 'Active. Scanning for passengers...';
+              if (requestMarker) {
+                map.removeLayer(requestMarker);
+                requestMarker = null;
+                lastSelectedRideId = null;
+              }
             }
           }, 3000);
 
@@ -216,10 +265,85 @@
           statusBtn.classList.remove('online');
           statusText.textContent = 'You are offline. Go online to receive ride requests.';
           if (pollTimer) clearInterval(pollTimer);
+          const container = document.getElementById('requests-list-container');
+          if (container) container.innerHTML = '';
+          if (requestMarker) {
+            map.removeLayer(requestMarker);
+            requestMarker = null;
+            lastSelectedRideId = null;
+          }
         }
       });
     }
   });
+
+  function toggleRequestPin(rideId, pickupText, lat, lng) {
+    if (lastSelectedRideId === rideId) {
+      if (requestMarker) {
+        map.removeLayer(requestMarker);
+        requestMarker = null;
+      }
+      lastSelectedRideId = null;
+    } else {
+      if (requestMarker) {
+        map.removeLayer(requestMarker);
+      }
+
+      const requestIcon = L.divIcon({
+        className: 'custom-request-pin',
+        html: `<div style="background-color: #214329; width: 14px; height: 14px; border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 0 6px rgba(0,0,0,0.4);"></div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      });
+
+      requestMarker = L.marker([lat, lng], { icon: requestIcon }).addTo(map)
+        .bindPopup(`<b>Pickup:</b> ${pickupText}`).openPopup();
+
+      map.setView([lat, lng], 16, { animate: true });
+      lastSelectedRideId = rideId;
+    }
+  }
+
+  async function acceptRide(rideId) {
+    const { data: { user }, error: authError } = await _supabase.auth.getUser();
+    
+    if (authError || !user) {
+      alert("You must be logged in as a driver to accept rides.");
+      return;
+    }
+
+    // Grab driver details from their auth metadata
+    const metadata = user.user_metadata || {};
+    const driverName = metadata.fullname || 'Driver';
+    const driverAvatar = metadata.avatar_url || null;
+
+    const { error } = await _supabase
+      .from('rides')
+      .update({ 
+        status: 'accepted',
+        driver_id: user.id,
+        driver_name: driverName,           // <--- Added this
+        driver_avatar_url: driverAvatar    // <--- Added this
+      })
+      .eq('id', rideId);
+
+    if (error) {
+      alert("Failed to accept ride.");
+    } else {
+      localStorage.setItem('current_ride_id', rideId);
+      window.location.href = "driver-on-trip.html";
+    }
+  }
+
+  async function declineRide(rideId) {
+    const { error } = await _supabase.from('rides').update({ 
+      status: 'declined' 
+    }).eq('id', rideId);
+
+    if (error) {
+      alert("Could not decline ride: " + error.message);
+    }
+  }
 
   function switchView(viewName) {
     document.querySelectorAll('.view-content').forEach(el => el.classList.remove('active'));
@@ -256,7 +380,12 @@
       </div>
     `).join('');
   }
-</script>
+
+  async function handleLogout() {
+    await _supabase.auth.signOut();
+    localStorage.clear();
+    window.location.href = 'welcome.html';
+  }
 </script>
 </body>
 </html>

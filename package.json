@@ -20,7 +20,9 @@
   "homepage": "https://github.com/leen-rei/TriHatid#readme",
   "dependencies": {
     "@capacitor/android": "^8.5.0",
-    "@capacitor/core": "^8.5.0"
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/geolocation": "^8.2.2"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.0"

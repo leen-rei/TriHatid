@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - Report Driver</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .report-container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 24px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f9f9f9;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    .report-card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .report-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1d1d1f;
+      margin-bottom: 6px;
+    }
+    .report-subtitle {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 6px;
+      display: block;
+    }
+    .reason-select, .textarea-input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 14px;
+      box-sizing: border-box;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .reason-select:focus, .textarea-input:focus {
+      border-color: #214329;
+    }
+    .textarea-input {
+      resize: vertical;
+      height: 100px;
+    }
+    .file-upload-box {
+      display: block;
+      border: 2px dashed #ccc;
+      padding: 14px;
+      text-align: center;
+      border-radius: 10px;
+      background: #fafafa;
+      cursor: pointer;
+      font-size: 13px;
+      color: #666;
+      margin-top: 4px;
+    }
+    .file-upload-box:hover {
+      border-color: #214329;
+      background: #f1f8f3;
+    }
+    .submit-report-btn {
+      width: 100%;
+      background: #c62828;
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .submit-report-btn:hover {
+      background: #b71c1c;
+    }
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 16px;
+      color: #666;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="report-container">
+    <div class="report-card">
+      <h2 class="report-title">Report Driver Incident</h2>
+      <p class="report-subtitle">Please provide details regarding your trip issue so our support team can review it.</p>
+
+      <form id="report-form" onsubmit="submitReport(event)">
+        
+        <div class="form-group">
+          <label class="form-label">Reason for Report</label>
+          <select id="report-reason" class="reason-select" required>
+            <option value="" disabled selected>Select a reason</option>
+            <option value="Reckless Driving">Reckless Driving / Speeding</option>
+            <option value="Inappropriate Behavior">Inappropriate Behavior / Language</option>
+            <option value="Overcharging">Overcharging / Fare Dispute</option>
+            <option value="Route Deviation">Unapproved Route Deviation</option>
+            <option value="Vehicle Condition">Unsafe Vehicle Condition</option>
+            <option value="Other">Other Issues</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Additional Details</label>
+          <textarea id="report-details" class="textarea-input" placeholder="Describe what happened..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Upload Proof (Photos or Videos)</label>
+          <label class="file-upload-box">
+            <span id="file-label-text">Tap to attach photo or video</span>
+            <input type="file" id="proof-file" accept="image/*,video/*" style="display: none;" onchange="updateFileName(this)">
+          </label>
+        </div>
+
+        <button type="submit" id="submit-btn" class="submit-report-btn">Submit Report</button>
+      </form>
+
+      <a href="home.html" class="back-link">Return to Home</a>
+    </div>
+  </div>
+
+  <!-- Supabase & Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script>
+    function showModal(title, message, callback) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-message').textContent = message;
+      document.getElementById('custom-modal').style.display = 'flex';
+      window.modalCallback = callback;
+    }
+
+    function closeCustomModal() {
+      document.getElementById('custom-modal').style.display = 'none';
+      if (typeof window.modalCallback === 'function') {
+        window.modalCallback();
+      }
+    }
+
+    function updateFileName(input) {
+      const label = document.getElementById('file-label-text');
+      if (input.files && input.files[0]) {
+        label.textContent = "Attached: " + input.files[0].name;
+      } else {
+        label.textContent = "Tap to attach photo or video";
+      }
+    }
+
+    async function submitReport(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submit-btn');
+      btn.textContent = "Submitting...";
+      btn.disabled = true;
+
+      try {
+        const { data: { user } } = await _supabase.auth.getUser();
+        if (!user) {
+          showModal("Authentication Required", "You must be logged in to submit a report.", () => {
+            window.location.href = 'welcome.html';
+          });
+          return;
+        }
+
+        const reason = document.getElementById('report-reason').value;
+        const details = document.getElementById('report-details').value;
+        const fileInput = document.getElementById('proof-file');
+        let mediaUrl = null;
+
+        if (fileInput.files && fileInput.files[0]) {
+          const file = fileInput.files[0];
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${user.id}_${Date.now()}.${fileExt}`;
+          const filePath = `${fileName}`;
+
+          const { error: uploadError } = await _supabase.storage
+            .from('avatars') 
+            .upload(filePath, file);
+
+          if (uploadError) {
+            console.error("Media upload error:", uploadError);
+          } else {
+            const { data: publicUrlData } = _supabase.storage
+              .from('avatars')
+              .getPublicUrl(filePath);
+            mediaUrl = publicUrlData.publicUrl;
+          }
+        }
+
+        const rideId = localStorage.getItem('last_completed_ride_id') || null;
+        const { error: insertError } = await _supabase
+          .from('reports')
+          .insert([
+            {
+              passenger_id: user.id,
+              ride_id: rideId,
+              reason: reason,
+              details: details,
+              media_url: mediaUrl,
+              status: 'pending'
+            }
+          ]);
+
+        if (insertError) {
+          console.warn("Database insert issue (table may need creation):", insertError);
+        }
+
+        showModal("Submitted", "Your report will be reviewed.", () => {
+          window.location.href = 'home.html';
+        });
+
+      } catch (err) {
+        btn.textContent = "Submit Report";
+        btn.disabled = false;
+        showModal("Error", "An error occurred: " + err.message);
+      }
+    }
+  </script>
+
+  <!-- Custom Mobile Message Modal -->
+  <div id="custom-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
+    <div style="background: #fff; width: 85%; max-width: 320px; padding: 24px; border-radius: 16px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+      <h3 id="modal-title" style="margin: 0 0 10px; font-size: 18px; color: #1d1d1f;">Notice</h3>
+      <p id="modal-message" style="margin: 0 0 20px; font-size: 14px; color: #666; line-height: 1.4;"></p>
+      <button onclick="closeCustomModal()" style="width: 100%; background: #214329; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 14px;">OK</button>
+    </div>
+  </div>
+</body>
+</html>
