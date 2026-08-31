@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - User Profile</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #ffffff;
+    }
+    .profile-container { 
+      display: flex; 
+      flex-direction: column; 
+      width: 100vw; 
+      height: 100vh; 
+      margin: 0; 
+      background: #fff; 
+      box-sizing: border-box; 
+    }
+    .profile-header { 
+      display: flex; 
+      align-items: center; 
+      padding: 16px; 
+      border-bottom: 1px solid #eee; 
+      background: #214329; 
+      color: white; 
+    }
+    .profile-header a { 
+      color: white; 
+      text-decoration: none; 
+      font-size: 20px; 
+      margin-right: 16px; 
+    }
+    .profile-content {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f9f9f9;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+    .profile-card {
+      width: 100%;
+      max-width: 400px;
+      background: #fff;
+      padding: 24px;
+      border-radius: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      text-align: center;
+      box-sizing: border-box;
+      margin-top: 20px;
+    }
+    .profile-avatar-large {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background-color: #ccc;
+      margin: 0 auto 16px auto;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: bold;
+      color: #555;
+    }
+    .profile-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1d1d1f;
+      margin-bottom: 6px;
+    }
+    .profile-role {
+      font-size: 14px;
+      color: #666;
+      text-transform: capitalize;
+      margin-bottom: 20px;
+    }
+    .info-box {
+      background: #f9f9f9;
+      padding: 14px;
+      border-radius: 12px;
+      text-align: left;
+      margin-bottom: 15px;
+      font-size: 14px;
+      color: #333;
+    }
+    .tricycle-preview-box {
+      margin-top: 15px;
+      text-align: left;
+    }
+    .tricycle-img {
+      width: 100%;
+      max-height: 180px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-top: 8px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <div class="profile-container">
+    <div class="profile-header">
+      <a href="#" id="back-btn">←</a>
+      <h2 style="font-size: 18px; margin:0;">User Profile</h2>
+    </div>
+
+    <div class="profile-content">
+      <div class="profile-card">
+        <div id="avatar-container" class="profile-avatar-large">?</div>
+        <h2 id="profile-name" class="profile-name">Loading...</h2>
+        <p id="profile-role" class="profile-role">User</p>
+
+        <!-- Phone Number Box -->
+        <div class="info-box">
+          <div style="font-size: 12px; color: #888;">Phone Number</div>
+          <div id="profile-phone" style="font-weight: 600; font-size: 14px; margin-top: 2px; color: #1d1d1f;">Not provided</div>
+        </div>
+
+        <!-- Account ID Box -->
+        <div class="info-box">
+          <div style="font-size: 12px; color: #888;">Account ID</div>
+          <div id="profile-id" style="font-weight: 600; word-break: break-all; font-size: 12px; margin-top: 2px;">--</div>
+        </div>
+
+        <!-- Driver Tricycle Section (hidden by default unless user is a driver with a photo) -->
+        <div id="driver-tricycle-container" class="tricycle-preview-box" style="display: none;">
+          <div style="font-size: 12px; color: #888; font-weight: 600;">Tricycle Vehicle</div>
+          <img id="tricycle-img-preview" class="tricycle-img" src="" alt="Tricycle Picture">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetUserId = urlParams.get('id');
+      const returnUrl = urlParams.get('return');
+
+      const backBtn = document.getElementById('back-btn');
+      backBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (returnUrl) {
+          window.location.href = decodeURIComponent(returnUrl);
+        } else {
+          window.history.back();
+        }
+      });
+
+      if (!targetUserId) {
+        document.getElementById('profile-name').textContent = "User not found";
+        return;
+      }
+
+      const { data: profile, error } = await _supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', targetUserId)
+        .maybeSingle();
+
+      if (error || !profile) {
+        document.getElementById('profile-name').textContent = "Profile unavailable";
+        return;
+      }
+
+      const name = profile.fullname || 'User';
+      const role = profile.role || 'passenger';
+      const avatarUrl = profile.avatar_url;
+      const phone = profile.phone;
+      const tricycleUrl = profile.tricycle_url;
+
+      document.getElementById('profile-name').textContent = name;
+      document.getElementById('profile-role').textContent = role;
+      document.getElementById('profile-id').textContent = profile.id;
+
+      // Populate Phone Number
+      const phoneEl = document.getElementById('profile-phone');
+      if (phone && phone.trim() !== "") {
+        phoneEl.textContent = phone;
+      } else {
+        phoneEl.textContent = "Not provided";
+        phoneEl.style.color = "#888";
+      }
+
+      // Populate Avatar
+      const avatarContainer = document.getElementById('avatar-container');
+      if (avatarUrl) {
+        avatarContainer.innerHTML = `<img src="${avatarUrl}" alt="" style="width:100%; height:100%; object-fit:cover;">`;
+      } else {
+        avatarContainer.textContent = name.charAt(0).toUpperCase();
+      }
+
+      // Show Tricycle Photo if user is a driver and has uploaded one
+      if (role === 'driver' && tricycleUrl) {
+        const triContainer = document.getElementById('driver-tricycle-container');
+        const triImg = document.getElementById('tricycle-img-preview');
+        triImg.src = tricycleUrl;
+        triContainer.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

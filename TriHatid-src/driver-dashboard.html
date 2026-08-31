@@ -108,6 +108,11 @@
           <span style="color: #ccc;">❯</span>
         </div>
 
+        <div class="profile-menu-item" onclick="window.location.href='messages.html';">
+          <span>Messages</span>
+          <span style="color: #ccc;">❯</span>
+        </div>
+
         <div class="profile-menu-item" onclick="handleLogout()" style="color: #c62828;">
           <span>Log Out</span>
           <span>❯</span>
@@ -152,16 +157,27 @@
 
     const { data: { user } } = await _supabase.auth.getUser();
     if (user) {
-      const metadata = user.user_metadata || {};
-      const fullName = metadata.fullname || localStorage.getItem('user_name') || 'Driver';
+      const { data: profile } = await _supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const fullName = profile?.fullname || user.user_metadata?.fullname || 'User';
+      const phone = profile?.phone || user.user_metadata?.phone || '';
+      const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url;
 
       const profileNameEl = document.querySelector('#view-profile h3');
       if (profileNameEl) profileNameEl.textContent = fullName;
 
+      // Optional: display phone in account view if an element with id 'profile-phone' exists
+      const phoneEl = document.getElementById('profile-phone');
+      if (phoneEl) phoneEl.textContent = phone ? `Phone: ${phone}` : '';
+
       const avatarEl = document.querySelector('.profile-avatar');
       if (avatarEl) {
-        if (metadata.avatar_url) {
-          avatarEl.innerHTML = `<img src="${metadata.avatar_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        if (avatarUrl) {
+          avatarEl.innerHTML = `<img src="${avatarUrl}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
         } else if (fullName) {
           avatarEl.textContent = fullName.charAt(0).toUpperCase();
         }
@@ -312,7 +328,6 @@
       return;
     }
 
-    // Grab driver details from their auth metadata
     const metadata = user.user_metadata || {};
     const driverName = metadata.fullname || 'Driver';
     const driverAvatar = metadata.avatar_url || null;
@@ -322,16 +337,16 @@
       .update({ 
         status: 'accepted',
         driver_id: user.id,
-        driver_name: driverName,           // <--- Added this
-        driver_avatar_url: driverAvatar    // <--- Added this
+        driver_name: driverName,
+        driver_avatar_url: driverAvatar
       })
       .eq('id', rideId);
 
     if (error) {
       alert("Failed to accept ride.");
     } else {
-      localStorage.setItem('current_ride_id', rideId);
-      window.location.href = "driver-on-trip.html";
+      // Pass ride_id via URL instead of localStorage
+      window.location.href = `driver-pickup.html?ride_id=${rideId}`;
     }
   }
 

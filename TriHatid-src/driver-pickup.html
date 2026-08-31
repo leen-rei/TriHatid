@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - Driver Pickup</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .trip-card {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 88%;
+      max-width: 400px;
+      background-color: #ffffff;
+      padding: 18px 16px;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .status-badge {
+      background-color: #2e7d32;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      align-self: center;
+    }
+    .action-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .btn-secondary-action {
+      flex: 1;
+      padding: 10px;
+      background-color: #f0f0f0;
+      color: #333;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      text-decoration: none;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map" style="width: 100vw; height: 100vh; position: absolute; top: 0; left: 0;"></div>
+
+  <div class="trip-card">
+    <div class="status-badge">Heading to Passenger Pickup</div>
+    
+    <div style="border-top: 1px solid #eee; padding-top: 10px; text-align: left;">
+      <span style="font-size: 11px; color: #666; display:block;">Pickup Location</span>
+      <span id="pickup-label" style="font-size: 14px; font-weight: 700; color: #1d1d1f;">Loading pickup point...</span>
+    </div>
+
+    <div class="passenger-profile" style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #eee; padding-top: 10px; cursor: pointer;">
+      <div class="passenger-avatar" style="width: 40px; height: 40px; border-radius: 50%; background-color: #ccc; overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #555;">?</div>
+      <div style="flex: 1; text-align: left;">
+        <span class="passenger-name" style="font-size: 14px; font-weight: 700; color: #1d1d1f;">Passenger</span>
+        <span style="font-size: 11px; color: #666; display: block;">Tap to view profile</span>
+      </div>
+    </div>
+
+    <div class="action-row">
+  <a href="#" class="btn-secondary-action">Call</a>
+  <a href="#" id="chat-btn" class="btn-secondary-action">Chat</a>
+</div>
+
+    <button type="button" id="start-trip-btn" class="button1" style="background-color: #2e7d32; border:none; cursor:pointer; width:100%; text-align:center; margin-top:4px;">
+      Arrived / Start Trip
+    </button>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async function () {
+      const pinColor = "#2e7d32";
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      const rideId = urlParams.get('ride_id');
+
+      if (!rideId) {
+        document.getElementById('pickup-label').textContent = "No active ride specified.";
+        return;
+      }
+
+      const chatBtn = document.getElementById('chat-btn');
+if (chatBtn && rideId) {
+  const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+  chatBtn.href = `messages.html?ride_id=${rideId}&return=${currentUrl}`;
+}
+
+      const { data: ride, error: rideError } = await _supabase
+        .from('rides')
+        .select('*')
+        .eq('id', rideId)
+        .single();
+
+      if (rideError || !ride) {
+        document.getElementById('pickup-label').textContent = "Ride not found.";
+        return;
+      }
+
+      document.getElementById('pickup-label').textContent = ride.pickup || "Pinned Location";
+
+      if (ride && ride.passenger_id) {
+        const { data: passengerProfile } = await _supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', ride.passenger_id)
+          .maybeSingle();
+
+        if (passengerProfile) {
+          const passName = passengerProfile.fullname || 'Passenger';
+          document.querySelector('.passenger-name').textContent = passName;
+
+          const passAvatarEl = document.querySelector('.passenger-avatar');
+          if (passengerProfile.avatar_url) {
+            passAvatarEl.innerHTML = `<img src="${passengerProfile.avatar_url}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+          } else {
+            passAvatarEl.textContent = passName.charAt(0).toUpperCase();
+          }
+
+          document.querySelector('.passenger-profile').addEventListener('click', () => {
+            const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `profile.html?id=${ride.passenger_id}&return=${currentUrl}`;
+          });
+        }
+      }
+
+      // Use database coordinates if available, otherwise fallback
+      const initialLat = ride.pickup_lat || 11.5833;
+      const initialLng = ride.pickup_lng || 122.4833;
+
+      // Pass zoomControl: false here to remove the default Leaflet +/- zoom buttons
+      const map = L.map('map', { zoomControl: false }).setView([initialLat, initialLng], 13);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+
+      setTimeout(() => map.invalidateSize(), 300);
+
+      if (ride.pickup_lat && ride.pickup_lng) {
+        const createPin = () => L.divIcon({
+          className: 'custom-pin',
+          html: `<div style="background-color: ${pinColor}; width: 18px; height: 18px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        L.marker([ride.pickup_lat, ride.pickup_lng], { icon: createPin() }).addTo(map).bindPopup('Passenger Pickup').openPopup();
+      }
+
+      let driverMarker = null;
+      let remainingRouteLine = null; // Gray line for path ahead
+      let traveledRouteLine = null;  // Green line for path passed
+
+      async function updateRouteAndDriver(driverLat, driverLng) {
+        if (!driverLat || !driverLng || driverLat === 0 || driverLng === 0) return;
+        if (!ride.pickup_lat || !ride.pickup_lng) return;
+
+        const driverCoords = [driverLat, driverLng];
+        const pickupCoords = [ride.pickup_lat, ride.pickup_lng];
+        
+        if (!driverMarker) {
+          driverMarker = L.marker(driverCoords, { 
+            icon: L.divIcon({
+              className: 'custom-pin',
+              html: `<div style="background-color: ${pinColor}; width: 18px; height: 18px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12]
+            }) 
+          }).addTo(map).bindPopup('Your Location');
+        } else {
+          driverMarker.setLatLng(driverCoords);
+        }
+
+        try {
+          const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${driverLng},${driverLat};${pickupCoords[1]},${pickupCoords[0]}?overview=full&geometries=geojson`);
+          const data = await response.json();
+          
+          if (data.routes && data.routes.length > 0) {
+            const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+            
+            // Find the closest point index on the route to the driver's current position
+            let closestIndex = 0;
+            let minDistance = Infinity;
+            
+            coords.forEach((coord, index) => {
+              const dist = Math.hypot(coord[0] - driverLat, coord[1] - driverLng);
+              if (dist < minDistance) {
+                minDistance = dist;
+                closestIndex = index;
+              }
+            });
+
+            // Split path: Driver-to-Current (Traveled/Active) vs Current-to-Pickup (Remaining/Gray)
+            const traveledCoords = coords.slice(0, closestIndex + 1);
+            const remainingCoords = coords.slice(closestIndex);
+
+            // Draw or update Traveled Line (Green/Active)
+            if (traveledRouteLine) {
+              traveledRouteLine.setLatLngs(traveledCoords);
+            } else if (traveledCoords.length > 1) {
+              traveledRouteLine = L.polyline(traveledCoords, { color: pinColor, weight: 5, opacity: 0.85 }).addTo(map);
+            }
+
+            // Draw or update Remaining Line (Gray for unvisited path)
+            if (remainingRouteLine) {
+              remainingRouteLine.setLatLngs(remainingCoords);
+            } else if (remainingCoords.length > 1) {
+              remainingRouteLine = L.polyline(remainingCoords, { color: '#9e9e9e', weight: 5, opacity: 0.85, dashArray: '6, 6' }).addTo(map);
+            }
+          }
+        } catch (e) {
+          console.error("OSRM road routing error:", e);
+        }
+      }
+
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          await updateRouteAndDriver(lat, lng);
+
+          await _supabase.from('rides').update({
+            driver_lat: lat,
+            driver_lng: lng
+          }).eq('id', rideId);
+        }, (err) => console.error("GPS Error:", err), { enableHighAccuracy: true });
+      }
+
+      document.getElementById('start-trip-btn').addEventListener('click', async () => {
+        await _supabase.from('rides').update({ status: 'ongoing' }).eq('id', rideId);
+        window.location.href = `driver-on-trip.html?ride_id=${rideId}`;
+      });
+    });
+  </script>
+</body>
+</html>

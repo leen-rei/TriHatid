@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - Passenger Pickup</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .tracking-card {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 88%;
+      max-width: 400px;
+      background-color: #ffffff;
+      padding: 18px 16px;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .status-badge {
+      background-color: #214329;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      align-self: center;
+    }
+    .driver-profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-top: 1px solid #eee;
+      padding-top: 12px;
+      cursor: pointer;
+    }
+    .driver-avatar {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background-color: #ccc;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #555;
+    }
+    .driver-info {
+      flex: 1;
+      text-align: left;
+    }
+    .driver-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1d1d1f;
+    }
+    .action-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .btn-secondary-action {
+      flex: 1;
+      padding: 10px;
+      background-color: #f0f0f0;
+      color: #333;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      text-decoration: none;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map" style="width: 100vw; height: 100vh; position: absolute; top: 0; left: 0;"></div>
+
+  <div class="tracking-card">
+    <div id="status-badge" class="status-badge">Driver is on the way to you</div>
+    
+    <div class="driver-profile">
+      <div class="driver-avatar"></div>
+      <div class="driver-info">
+        <span class="driver-name">Loading driver...</span>
+        <span style="font-size: 11px; color: #666;">Heading to your pickup point</span>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <a href="#" class="btn-secondary-action">Call</a>
+      <a href="#" id="chat-btn" class="btn-secondary-action">Chat</a>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async function () {
+      const pinColor = "#2e7d32";
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      const rideId = urlParams.get('ride_id');
+
+      if (!rideId) {
+        alert("No active ride specified.");
+        window.location.href = "home.html";
+        return;
+      }
+
+      const chatBtn = document.getElementById('chat-btn');
+      if (chatBtn && rideId) {
+        const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        chatBtn.href = `messages.html?ride_id=${rideId}&return=${currentUrl}`;
+      }
+
+      const { data: ride, error: rideError } = await _supabase
+        .from('rides')
+        .select('*')
+        .eq('id', rideId)
+        .single();
+
+      if (rideError || !ride) {
+        alert("Ride not found.");
+        window.location.href = "home.html";
+        return;
+      }
+
+      const initialLat = ride.pickup_lat || 11.7068;
+      const initialLng = ride.pickup_lng || 122.3656;
+
+      const map = L.map('map', { zoomControl: false }).setView([initialLat, initialLng], 16);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+
+      setTimeout(() => map.invalidateSize(), 300);
+
+      if (ride.pickup_lat && ride.pickup_lng) {
+        const createPin = () => L.divIcon({
+          className: 'custom-pin',
+          html: `<div style="background-color: ${pinColor}; width: 18px; height: 18px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        L.marker([ride.pickup_lat, ride.pickup_lng], { icon: createPin() }).addTo(map).bindPopup('Passenger Pickup').openPopup();
+      }
+
+      // Populate Driver Details cleanly (fixed duplicate block)
+      if (ride.driver_id) {
+        const { data: driverProfile, error: profileError } = await _supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', ride.driver_id)
+          .maybeSingle();
+
+        const driverName = driverProfile?.fullname || driverProfile?.full_name || driverProfile?.name || ride.driver_name || 'Driver';
+        document.querySelector('.driver-name').textContent = driverName;
+
+        const driverAvatar = driverProfile?.avatar_url || ride.driver_avatar_url || null;
+        const avatarEl = document.querySelector('.driver-avatar');
+        if (avatarEl && driverAvatar) {
+          avatarEl.innerHTML = `<img src="${driverAvatar}" alt="Driver" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+        } else if (avatarEl) {
+          avatarEl.textContent = driverName.charAt(0).toUpperCase();
+        }
+
+        const driverProfileEl = document.querySelector('.driver-profile');
+        if (driverProfileEl) {
+          driverProfileEl.addEventListener('click', () => {
+            const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `profile.html?id=${ride.driver_id}&return=${currentUrl}`;
+          });
+        }
+      }
+
+      let driverMarker = null;
+      let remainingRouteLine = null;
+      let traveledRouteLine = null;
+
+      const checkInterval = setInterval(async () => {
+        const { data: updatedRide } = await _supabase
+          .from('rides')
+          .select('*')
+          .eq('id', rideId)
+          .single();
+
+        if (updatedRide) {
+          if (updatedRide.status === 'ongoing') {
+            clearInterval(checkInterval);
+            window.location.href = `on-trip.html?ride_id=${rideId}`;
+            return;
+          }
+
+          if (updatedRide.driver_lat && updatedRide.driver_lng && 
+              updatedRide.driver_lat !== 0 && updatedRide.driver_lng !== 0 && 
+              ride.pickup_lat && ride.pickup_lng) {
+              
+            const driverCoords = [updatedRide.driver_lat, updatedRide.driver_lng];
+            const pickupCoords = [ride.pickup_lat, ride.pickup_lng];
+
+            if (!driverMarker) {
+              driverMarker = L.marker(driverCoords, { 
+                icon: L.divIcon({
+                  className: 'custom-pin',
+                  html: `<div style="background-color: #214329; width: 18px; height: 18px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`,
+                  iconSize: [24, 24],
+                  iconAnchor: [12, 12]
+                }) 
+              }).addTo(map).bindPopup('Driver Location');
+            } else {
+              driverMarker.setLatLng(driverCoords);
+            }
+
+            try {
+              const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${updatedRide.driver_lng},${updatedRide.driver_lat};${pickupCoords[1]},${pickupCoords[0]}?overview=full&geometries=geojson`);
+              const data = await response.json();
+              
+              if (data.routes && data.routes.length > 0) {
+                const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                
+                let closestIndex = 0;
+                let minDistance = Infinity;
+                
+                coords.forEach((coord, index) => {
+                  const dist = Math.hypot(coord[0] - updatedRide.driver_lat, coord[1] - updatedRide.driver_lng);
+                  if (dist < minDistance) {
+                    minDistance = dist;
+                    closestIndex = index;
+                  }
+                });
+
+                const traveledCoords = coords.slice(0, closestIndex + 1);
+                const remainingCoords = coords.slice(closestIndex);
+
+                if (traveledRouteLine) {
+                  traveledRouteLine.setLatLngs(traveledCoords);
+                } else if (traveledCoords.length > 1) {
+                  traveledRouteLine = L.polyline(traveledCoords, { color: '#214329', weight: 5, opacity: 0.85 }).addTo(map);
+                }
+
+                if (remainingRouteLine) {
+                  remainingRouteLine.setLatLngs(remainingCoords);
+                } else if (remainingCoords.length > 1) {
+                  remainingRouteLine = L.polyline(remainingCoords, { color: '#9e9e9e', weight: 5, opacity: 0.85, dashArray: '6, 6' }).addTo(map);
+                }
+              }
+            } catch (e) {
+              console.error("OSRM road routing error:", e);
+            }
+          }
+        }
+      }, 3000);
+    });
+  </script>
+</body>
+</html>

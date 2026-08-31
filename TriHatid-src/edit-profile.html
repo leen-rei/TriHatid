@@ -7,17 +7,26 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="register-box">
+  <div class="register-box" style="max-width: 450px; margin: 30px auto; padding: 20px;">
     <h1 class="title" style="font-size: 20px;">Edit Profile</h1>
 
     <label class="label" for="update-name">Full Name</label>
     <input type="text" id="update-name" class="input1" required>
 
+    <label class="label" for="update-phone">Phone Number</label>
+    <input type="tel" id="update-phone" class="input1" placeholder="e.g. 09123456789">
+
     <label class="label" for="avatar-file">Profile Picture</label>
     <input type="file" id="avatar-file" class="input1" accept="image/*" style="padding: 8px;">
 
+    <!-- Driver-specific Tricycle Photo Section -->
+    <div id="driver-tricycle-section" style="display: none; margin-top: 10px;">
+      <label class="label" for="tricycle-file">Tricycle Picture</label>
+      <input type="file" id="tricycle-file" class="input1" accept="image/*" style="padding: 8px;">
+    </div>
+
     <button type="button" id="save-profile-btn" class="button1" style="margin-top: 15px;">Save Changes</button>
-    <a href="home.html" class="switch-link" style="display: block; text-align: center; margin-top: 10px; text-decoration: none;">Back to Home</a>
+    <a href="home.html" class="switch-link" id="back-link" style="display: block; text-align: center; margin-top: 10px; text-decoration: none;">Back to Home</a>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -26,15 +35,28 @@
     document.addEventListener('DOMContentLoaded', async () => {
       const { data: { user } } = await _supabase.auth.getUser();
       if (user) {
-        const metadata = user.user_metadata || {};
-        document.getElementById('update-name').value = metadata.fullname || '';
+        const role = user.user_metadata?.role || localStorage.getItem('user_role') || 'passenger';
+        if (role === 'driver') {
+          document.getElementById('driver-tricycle-section').style.display = 'block';
+          document.getElementById('back-link').href = 'driver-dashboard.html';
+        }
+
+        const { data: profile } = await _supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        document.getElementById('update-name').value = profile?.fullname || user.user_metadata?.fullname || '';
+        document.getElementById('update-phone').value = profile?.phone || user.user_metadata?.phone || '';
       }
     });
 
     document.getElementById('save-profile-btn').addEventListener('click', async () => {
-      console.log("--- SAVE BUTTON CLICKED ---");
       const fullName = document.getElementById('update-name').value.trim();
-      const fileInput = document.getElementById('avatar-file');
+      const phone = document.getElementById('update-phone').value.trim();
+      const avatarFile = document.getElementById('avatar-file').files[0];
+      const tricycleFile = document.getElementById('tricycle-file')?.files[0];
       
       const { data: { user } } = await _supabase.auth.getUser();
       if (!user) {
@@ -42,44 +64,62 @@
         return;
       }
 
-      let avatarUrl = user.user_metadata?.avatar_url || null;
+      const { data: existingProfile } = await _supabase
+        .from('profiles')
+        .select('avatar_url, tricycle_url')
+        .eq('id', user.id)
+        .maybeSingle();
 
-      // 1. Upload new image if file chosen
-      if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        const filePath = `${user.id}/${Date.now()}_${file.name}`;
-        
-        const { error: uploadError } = await _supabase.storage
-          .from('avatars')
-          .upload(filePath, file, { upsert: true });
+      let avatarUrl = existingProfile?.avatar_url || user.user_metadata?.avatar_url || null;
+      let tricycleUrl = existingProfile?.tricycle_url || user.user_metadata?.tricycle_url || null;
 
+      // Upload Profile Avatar if selected
+      if (avatarFile) {
+        const filePath = `${user.id}/avatar_${Date.now()}_${avatarFile.name}`;
+        const { error: uploadError } = await _supabase.storage.from('avatars').upload(filePath, avatarFile, { upsert: true });
         if (uploadError) {
-          alert("Error uploading image: " + uploadError.message);
+          alert("Error uploading avatar: " + uploadError.message);
           return;
         }
-
-        const { data: publicUrlData } = _supabase.storage
-          .from('avatars')
-          .getPublicUrl(filePath);
-
-        avatarUrl = publicUrlData.publicUrl;
+        avatarUrl = _supabase.storage.from('avatars').getPublicUrl(filePath).data.publicUrl;
       }
 
-      // 2. Save everything directly to Supabase Auth Metadata (Bypassing tables & 403 errors entirely)
-      const { error: authError } = await _supabase.auth.updateUser({
-        data: { 
-          fullname: fullName, 
-          avatar_url: avatarUrl 
+      // Upload Tricycle Picture if selected
+      if (tricycleFile) {
+        const triPath = `${user.id}/tricycle_${Date.now()}_${tricycleFile.name}`;
+        const { error: triError } = await _supabase.storage.from('avatars').upload(triPath, tricycleFile, { upsert: true });
+        if (triError) {
+          alert("Error uploading tricycle image: " + triError.message);
+          return;
         }
+        tricycleUrl = _supabase.storage.from('avatars').getPublicUrl(triPath).data.publicUrl;
+      }
+
+      const role = user.user_metadata?.role || 'passenger';
+
+      // Update Supabase Auth User Metadata (fixes the account sync bug)
+      await _supabase.auth.updateUser({
+        data: { fullname: fullName, phone: phone, avatar_url: avatarUrl, tricycle_url: tricycleUrl }
       });
 
-      if (authError) {
-        alert("Failed to update profile: " + authError.message);
+      // Update public.profiles table
+      const { error: profileError } = await _supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          fullname: fullName,
+          phone: phone,
+          avatar_url: avatarUrl,
+          tricycle_url: tricycleUrl,
+          role: role
+        });
+
+      if (profileError) {
+        alert("Failed to update profile: " + profileError.message);
         return;
       }
 
       alert("Profile updated successfully!");
-      const role = user.user_metadata?.role || 'passenger';
       window.location.href = role === 'driver' ? 'driver-dashboard.html' : 'home.html';
     });
   </script>

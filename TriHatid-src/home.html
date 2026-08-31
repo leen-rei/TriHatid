@@ -35,7 +35,6 @@
     </div>
 
     <!-- ACTIVITY HISTORY -->
-    <!-- ACTIVITY HISTORY -->
 <div id="view-history" class="view-content">
   <div class="panel-view">
     <h2 class="panel-title">Activity History</h2>
@@ -61,14 +60,19 @@
         </div>
 
 <div class="profile-menu-item" onclick="window.location.href='edit-profile.html';">
-  <span>Edit Profile</span>
-  <span style="color: #ccc;">❯</span>
-</div>
+          <span>Edit Profile</span>
+          <span style="color: #ccc;">❯</span>
+        </div>
+
+        <div class="profile-menu-item" onclick="window.location.href='messages.html';">
+          <span>Messages</span>
+          <span style="color: #ccc;">❯</span>
+        </div>
 
         <div class="profile-menu-item" onclick="handleLogout()" style="color: #c62828;">
-  <span>Log Out</span>
-  <span>❯</span>
-</div>
+          <span>Log Out</span>
+          <span>❯</span>
+        </div>
       </div>
     </div>
 
@@ -107,10 +111,7 @@
 <!-- 1. Load supabase library and bridge first -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
-
-<!-- 2. Load map/script logic next -->
 <script src="script.js"></script>
-
 <script>
   // Load passenger history dynamically
   async function loadPassengerHistory() {
@@ -141,7 +142,7 @@
     `).join('');
   }
 
-// Dynamic Profile & Security Guard
+  // Dynamic Profile & Security Guard
   document.addEventListener('DOMContentLoaded', async () => {
     const role = localStorage.getItem('user_role');
     if (role === 'driver') {
@@ -150,19 +151,29 @@
     }
 
     // Fetch live session user details from Supabase to update Account tab
-    const { data: { user } } = await _supabase.auth.getUser();
+   const { data: { user } } = await _supabase.auth.getUser();
     if (user) {
-      const metadata = user.user_metadata || {};
-      const fullName = metadata.fullname || localStorage.getItem('user_name') || 'User';
+      const { data: profile } = await _supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const fullName = profile?.fullname || user.user_metadata?.fullname || 'User';
+      const phone = profile?.phone || user.user_metadata?.phone || '';
+      const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url;
 
       const profileNameEl = document.querySelector('#view-profile h3');
       if (profileNameEl) profileNameEl.textContent = fullName;
 
-      // Update avatar text or render image if avatar_url exists
+      // Optional: display phone in account view if an element with id 'profile-phone' exists
+      const phoneEl = document.getElementById('profile-phone');
+      if (phoneEl) phoneEl.textContent = phone ? `Phone: ${phone}` : '';
+
       const avatarEl = document.querySelector('.profile-avatar');
       if (avatarEl) {
-        if (metadata.avatar_url) {
-          avatarEl.innerHTML = `<img src="${metadata.avatar_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        if (avatarUrl) {
+          avatarEl.innerHTML = `<img src="${avatarUrl}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
         } else if (fullName) {
           avatarEl.textContent = fullName.charAt(0).toUpperCase();
         }
@@ -179,18 +190,26 @@
       const pickup = document.getElementById('pickup-input').value || 'Brgy. Poblacion, Kalibo';
       const destination = document.getElementById('destination-input').value || 'Dumaguit Port';
       
-      localStorage.setItem('trip_pickup', pickup);
-      localStorage.setItem('trip_destination', destination);
+      // Use the actual road-snapped pickupCoords from script.js
+      const lat = (typeof pickupCoords !== 'undefined' && pickupCoords) ? pickupCoords[0] : 11.5833;
+      const lng = (typeof pickupCoords !== 'undefined' && pickupCoords) ? pickupCoords[1] : 122.4833;
       
-      window.location.href = "ride-options.html";
+      const params = new URLSearchParams({
+        pickup: pickup,
+        destination: destination,
+        lat: lat,
+        lng: lng
+      });
+      
+      window.location.href = `ride-options.html?${params.toString()}`;
     });
   }
 
   async function handleLogout() {
-  await _supabase.auth.signOut();
-  localStorage.clear();
-  window.location.href = 'welcome.html';
-}
+    await _supabase.auth.signOut();
+    localStorage.clear();
+    window.location.href = 'welcome.html';
+  }
 </script>
 </body>
 </html>

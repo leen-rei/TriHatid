@@ -148,6 +148,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const pickup = urlParams.get('pickup');
+  const destination = urlParams.get('destination');
+  const lat = urlParams.get('lat');
+  const lng = urlParams.get('lng');
+
   let selectedType = 'Regular';
   let selectedFare = 40;
 
@@ -163,29 +169,34 @@
   });
 
   document.getElementById('confirm-ride-btn').addEventListener('click', async function() {
-    const pickup = localStorage.getItem('trip_pickup') || 'Kalibo Public Market';
-    const destination = localStorage.getItem('trip_destination') || 'Kalibo Airport';
-    
     const { data: { user } } = await _supabase.auth.getUser();
+    if (!user) {
+      window.location.href = "login.html";
+      return;
+    }
 
-    // Insert ride request into Supabase
-    const { data, error } = await _supabase.from('rides').insert([
-      {
-        passenger_id: user ? user.id : null,
+    const { data, error } = await _supabase
+      .from('rides')
+      .insert([{
+        passenger_id: user.id,
         pickup: pickup,
         destination: destination,
+        pickup_lat: lat,
+        pickup_lng: lng,
         ride_type: selectedType,
         fare: selectedFare,
         status: 'searching'
-      }
-    ]).select().single();
+      }])
+      .select();
 
-    if (!error && data) {
-      localStorage.setItem('current_ride_id', data.id);
+    if (error) {
+      alert("Failed to create ride request: " + error.message);
+      return;
     }
 
-    localStorage.setItem('trihatid_booking_state', 'searching');
-    window.location.href = "searching.html";
+    if (data && data.length > 0) {
+      window.location.href = `searching.html?ride_id=${data[0].id}`;
+    }
   });
 </script>
 </body>

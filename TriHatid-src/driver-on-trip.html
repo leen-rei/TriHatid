@@ -77,10 +77,18 @@
       <span style="font-size: 14px; font-weight: 700; color: #1d1d1f;">Awaiting Destination</span>
     </div>
 
-    <div class="action-row">
-      <a href="#" class="btn-secondary-action">Call</a>
-      <a href="#" class="btn-secondary-action">Chat</a>
+    <div class="passenger-profile" style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #eee; padding-top: 10px; cursor: pointer;">
+      <div class="passenger-avatar" style="width: 40px; height: 40px; border-radius: 50%; background-color: #ccc; overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #555;">?</div>
+      <div style="flex: 1; text-align: left;">
+        <span class="passenger-name" style="font-size: 14px; font-weight: 700; color: #1d1d1f;">Passenger</span>
+        <span style="font-size: 11px; color: #666; display: block;">Tap to view profile</span>
+      </div>
     </div>
+
+    <div class="action-row">
+  <a href="#" class="btn-secondary-action">Call</a>
+  <a href="#" id="chat-btn" class="btn-secondary-action">Chat</a>
+</div>
 
     <button type="button" id="complete-trip-btn" class="button1" style="background-color: #2e7d32; border:none; cursor:pointer; width:100%; text-align:center; margin-top:4px;">
       Complete Trip
@@ -99,7 +107,15 @@
     }).addTo(map);
     setTimeout(() => map.invalidateSize(), 200);
 
-    const rideId = localStorage.getItem('current_ride_id');
+    const urlParams = new URLSearchParams(window.location.search);
+    const rideId = urlParams.get('ride_id');
+
+    const chatBtn = document.getElementById('chat-btn');
+if (chatBtn && rideId) {
+  const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+  chatBtn.href = `messages.html?ride_id=${rideId}&return=${currentUrl}`;
+}
+
     if (rideId) {
       const { data: ride } = await _supabase
         .from('rides')
@@ -114,6 +130,32 @@
           routeLabel.textContent = `${ride.pickup} ➔ ${ride.destination}`;
         }
       }
+
+      if (ride && ride.passenger_id) {
+        const { data: passengerProfile } = await _supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', ride.passenger_id)
+          .maybeSingle();
+
+        if (passengerProfile) {
+          const passName = passengerProfile.fullname || 'Passenger';
+          document.querySelector('.passenger-name').textContent = passName;
+
+          const passAvatarEl = document.querySelector('.passenger-avatar');
+          if (passengerProfile.avatar_url) {
+            passAvatarEl.innerHTML = `<img src="${passengerProfile.avatar_url}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+          } else {
+            passAvatarEl.textContent = passName.charAt(0).toUpperCase();
+          }
+
+          document.querySelector('.passenger-profile').addEventListener('click', () => {
+            const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `profile.html?id=${ride.passenger_id}&return=${currentUrl}`;
+          });
+        }
+      }
+
     }
 
     document.getElementById('complete-trip-btn').addEventListener('click', async () => {

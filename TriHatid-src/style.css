@@ -6,7 +6,7 @@
 }
 
 /* Ensure phone frame and body allow full height tracking */
-html, body, .phone-frame {
+html, body {
   width: 100%;
   height: 100%;
   position: relative;

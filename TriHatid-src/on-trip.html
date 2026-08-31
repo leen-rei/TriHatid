@@ -47,6 +47,7 @@
       gap: 12px;
       border-top: 1px solid #eee;
       padding-top: 12px;
+      cursor: pointer;
     }
     .driver-avatar {
       width: 45px;
@@ -104,15 +105,16 @@
       <div class="driver-avatar"></div>
       <div class="driver-info">
         <span class="driver-name">Juan Dela Cruz</span>
+        <span id="driver-phone-label" style="font-size: 11px; color: #666; display: block;"></span>
       </div>
     </div>
 
     <div class="action-row">
-      <a href="#" class="btn-secondary-action">Call</a>
-      <a href="#" class="btn-secondary-action">Chat</a>
+      <a href="#" id="call-btn" class="btn-secondary-action">Call</a>
+      <a href="#" id="chat-btn" class="btn-secondary-action">Chat</a>
     </div>
 
-    <a href="rating.html" class="button1" style="text-align: center; text-decoration: none; margin-top: 4px; background-color: #c0392b;">
+    <a href="rating.html" class="button1" style="text-align: center; text-decoration: none; margin-top: 4px; background-color: #c0392b; color: white; padding: 12px; border-radius: 10px; font-weight: 600;">
       End Trip
     </a>
   </div>
@@ -132,21 +134,35 @@
         map.invalidateSize();
       }, 200);
 
-      const { data: { user } } = await _supabase.auth.getUser();
-      if (!user) return;
+      const urlParams = new URLSearchParams(window.location.search);
+      const rideId = urlParams.get('ride_id');
+
+      if (!rideId) {
+        alert("No active ride specified.");
+        window.location.href = "home.html";
+        return;
+      }
+
+      const chatBtn = document.getElementById('chat-btn');
+      if (chatBtn && rideId) {
+        const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        chatBtn.href = `messages.html?ride_id=${rideId}&return=${currentUrl}`;
+      }
 
       const { data: rideData, error: rideError } = await _supabase
         .from('rides')
         .select('*')
-        .eq('passenger_id', user.id)
-        .in('status', ['accepted', 'ongoing'])
-        .order('id', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq('id', rideId)
+        .single();
 
       if (rideError || !rideData) {
         console.log("No active ride found:", rideError);
         return;
+      }
+
+      // Map centers on pickup coordinates if available, but without placing the unwanted marker pin
+      if (rideData.pickup_lat && rideData.pickup_lng) {
+        map.setView([rideData.pickup_lat, rideData.pickup_lng], 15);
       }
 
       if (rideData.fare) {
@@ -154,16 +170,27 @@
       }
 
       if (rideData.driver_id) {
-        const { data: profileData } = await _supabase
+        const { data: profileData, error: profileError } = await _supabase
           .from('profiles')
           .select('*')
           .eq('id', rideData.driver_id)
           .maybeSingle();
 
-        const driverName = profileData?.fullname || profileData?.full_name || rideData.driver_name || 'Assigned Driver';
+        const driverName = profileData?.fullname || profileData?.full_name || profileData?.name || profileData?.username || rideData.driver_name || 'Assigned Driver';
         document.querySelector('.driver-name').textContent = driverName;
 
-        // Automatically checks every possible column name for your avatar image
+        // Populate phone number and hook up Call button
+        const callBtn = document.getElementById('call-btn');
+        if (profileData?.phone) {
+          callBtn.href = `tel:${profileData.phone}`;
+          document.getElementById('driver-phone-label').textContent = profileData.phone;
+        } else {
+          callBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            alert("Driver phone number is not available.");
+          });
+        }
+
         const driverAvatar = profileData?.avatar_url || profileData?.avatar || profileData?.photo_url || profileData?.profile_pic || rideData.driver_avatar_url || null;
         
         const avatarEl = document.querySelector('.driver-avatar');
@@ -172,6 +199,24 @@
         } else if (avatarEl) {
           avatarEl.textContent = driverName.charAt(0).toUpperCase();
         }
+
+        const driverProfileBox = document.querySelector('.driver-profile');
+        if (driverProfileBox) {
+          driverProfileBox.addEventListener('click', () => {
+            const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `profile.html?id=${rideData.driver_id}&return=${currentUrl}`;
+          });
+        }
+      }
+
+      // Handle End Trip button for passenger
+      const endTripBtn = document.querySelector('a[href="rating.html"]');
+      if (endTripBtn) {
+        endTripBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await _supabase.from('rides').update({ status: 'completed' }).eq('id', rideId);
+          window.location.href = `rating.html?ride_id=${rideId}`;
+        });
       }
     });
   </script>

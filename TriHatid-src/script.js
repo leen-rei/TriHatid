@@ -65,8 +65,14 @@ async function searchLocation(query, type) {
     const data = await response.json();
 
     if (data && data.length > 0) {
-      const lat = parseFloat(data[0].lat);
-      const lon = parseFloat(data[0].lon);
+      const rawLat = parseFloat(data[0].lat);
+      const rawLon = parseFloat(data[0].lon);
+
+      // Snap text search center points to the nearest driveable road
+      const snapped = await getNearestRoadCoordinates(rawLat, rawLon);
+      const lat = snapped.lat;
+      const lon = snapped.lng;
+
       const coords = [lat, lon];
       const displayName = data[0].display_name.split(',').slice(0, 3).join(',');
 
@@ -145,10 +151,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const bookBtn = document.getElementById('book-btn');
 
   map.on('click', async function(e) {
-    const lat = e.latlng.lat;
-    const lng = e.latlng.lng;
-    if (statusHint) statusHint.innerText = "Getting location name...";
+    const rawLat = e.latlng.lat;
+    const rawLng = e.latlng.lng;
+    if (statusHint) statusHint.innerText = "Snapping to nearest road...";
     
+    // Pass raw tap coordinates here so it snaps to land instead of water
+    const snapped = await getNearestRoadCoordinates(rawLat, rawLng);
+    const lat = snapped.lat;
+    const lng = snapped.lng;
+
     const placeName = await reverseGeocode(lat, lng);
 
     if (selectionStep === 0) {
@@ -255,8 +266,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const position = await new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
         });
-        lat = position.coords.latitude;
-        lng = position.coords.longitude;
+        const rawLat = position.coords.latitude;
+        const rawLng = position.coords.longitude;
+
+        // Snap GPS coordinates to the nearest road (assigning to outer scope variables)
+        const snapped = await getNearestRoadCoordinates(rawLat, rawLng);
+        lat = snapped.lat;
+        lng = snapped.lng;
       }
 
       pickupCoords = [lat, lng];
@@ -332,4 +348,19 @@ function initCapacitorBackButton() {
       }
     });
   }
+}
+
+async function getNearestRoadCoordinates(lat, lng) {
+  try {
+    const response = await fetch(`https://router.project-osrm.org/nearest/v1/driving/${lng},${lat}?number=1`);
+    const data = await response.json();
+    if (data.code === "Ok" && data.waypoints && data.waypoints.length > 0) {
+      const snappedLng = data.waypoints[0].location[0];
+      const snappedLat = data.waypoints[0].location[1];
+      return { lat: snappedLat, lng: snappedLng };
+    }
+  } catch (e) {
+    console.error("Road snapping failed, using raw coordinates:", e);
+  }
+  return { lat, lng }; 
 }

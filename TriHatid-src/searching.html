@@ -96,7 +96,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <script>
-  const rideId = localStorage.getItem('current_ride_id');
+  // Get ride_id from URL parameters instead of localStorage
+  const urlParams = new URLSearchParams(window.location.search);
+  const rideId = urlParams.get('ride_id');
 
   // Poll Supabase to check if a driver accepted the ride
   const checkInterval = setInterval(async () => {
@@ -109,7 +111,7 @@
 
     if (data && data.status === 'accepted') {
       clearInterval(checkInterval);
-      window.location.href = "on-trip.html";
+      window.location.href = `passenger-pickup.html?ride_id=${rideId}`;
     }
   }, 2500);
 
@@ -118,8 +120,6 @@
     if (rideId) {
       await _supabase.from('rides').update({ status: 'cancelled' }).eq('id', rideId);
     }
-    localStorage.removeItem('trihatid_booking_state');
-    localStorage.removeItem('current_ride_id');
     window.location.href = "home.html";
   });
 </script>

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriHatid - Messages</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #ffffff;
+    }
+    .chat-container { 
+      display: flex; 
+      flex-direction: column; 
+      width: 100vw; 
+      height: 100vh; 
+      margin: 0; 
+      background: #fff; 
+      box-sizing: border-box; 
+    }
+    .chat-header { 
+      display: flex; 
+      align-items: center; 
+      padding: 16px; 
+      border-bottom: 1px solid #eee; 
+      background: #214329; 
+      color: white; 
+    }
+    .chat-header a { 
+      color: white; 
+      text-decoration: none; 
+      font-size: 20px; 
+      margin-right: 16px; 
+    }
+    .chat-messages { 
+      flex: 1; 
+      padding: 16px; 
+      overflow-y: auto; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: flex-start; /* Prevents children from stretching full width */
+      gap: 10px; 
+      background: #f9f9f9; 
+    }
+    .message-bubble { 
+      padding: 10px 14px; 
+      border-radius: 18px; 
+      font-size: 14px; 
+      line-height: 1.4; 
+      word-break: break-word; 
+      display: inline-block;
+      width: fit-content;
+    }
+    .message-bubble.sent { 
+      background: #214329; 
+      color: white; 
+      align-self: flex-end; 
+      border-bottom-right-radius: 4px; /* Subtle chat tail effect */
+    }
+    .message-bubble.received { 
+      background: #e4e6eb; 
+      color: #050505; 
+      align-self: flex-start; 
+      border-bottom-left-radius: 4px; /* Subtle chat tail effect */
+    }
+    .chat-input-area { 
+      display: flex; 
+      padding: 12px; 
+      border-top: 1px solid #eee; 
+      background: #fff; 
+      gap: 8px; 
+    }
+    .chat-input-area input { 
+      flex: 1; 
+      padding: 10px 14px; 
+      border: 1px solid #ddd; 
+      border-radius: 20px; 
+      outline: none; 
+      font-size: 14px; 
+    }
+    .chat-input-area button { 
+      background: #214329; 
+      color: white; 
+      border: none; 
+      padding: 10px 20px; 
+      border-radius: 20px; 
+      font-weight: bold; 
+      cursor: pointer; 
+    }
+    .thread-list { 
+      padding: 16px; 
+      overflow-y: auto; 
+      flex: 1; 
+    }
+    .thread-item { 
+      padding: 12px 16px; 
+      border-bottom: 1px solid #eee; 
+      cursor: pointer; 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+    }
+    .thread-item:hover { 
+      background: #f1f1f1; 
+    }
+    .thread-avatar {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background-color: #ccc;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #555;
+      flex-shrink: 0;
+    }
+    .message-wrapper {
+      display: flex;
+      flex-direction: column;
+      max-width: 75%; /* Strict boundary for the whole message block */
+    }
+    .message-wrapper.sent {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+    .message-wrapper.received {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+    .message-bubble { 
+      padding: 10px 14px; 
+      border-radius: 18px; 
+      font-size: 14px; 
+      line-height: 1.4; 
+      word-break: break-word; 
+      overflow-wrap: break-word;
+      max-width: 100%; /* Stays safely inside the 75% wrapper limit */
+    }
+    .message-bubble.sent { 
+      background: #214329; 
+      color: white; 
+      border-bottom-right-radius: 4px; 
+    }
+    .message-bubble.received { 
+      background: #e4e6eb; 
+      color: #050505; 
+      border-bottom-left-radius: 4px; 
+    }
+    .message-timestamp {
+      font-size: 10px;
+      color: #8c939d;
+      margin-top: 2px;
+      padding: 0 4px;
+    }
+    .message-wrapper.sent .message-timestamp {
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <a href="#" id="back-btn">←</a>
+      <h2 id="header-title" style="font-size: 18px; margin:0;">Messages</h2>
+    </div>
+
+    <!-- Conversations / Thread List View -->
+    <div id="thread-view" class="thread-list">
+      <p style="color: #666; text-align: center; margin-top: 20px;">Loading chats...</p>
+    </div>
+
+    <!-- Active Chat Conversation View (Hidden Initially) -->
+    <div id="chat-view" style="display: none; flex-direction: column; flex: 1; overflow: hidden;">
+      <div id="message-list" class="chat-messages"></div>
+      <div class="chat-input-area">
+        <input type="text" id="message-input" placeholder="Type a message...">
+        <button type="button" id="send-btn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script>
+    let currentUserId = null;
+    let activeRideId = null;
+    let userRole = 'passenger';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const { data: { user } } = await _supabase.auth.getUser();
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+      currentUserId = user.id;
+      userRole = user.user_metadata?.role || 'passenger';
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const rideIdParam = urlParams.get('ride_id'); 
+      const returnUrl = urlParams.get('return');
+
+      if (rideIdParam) {
+        openChat(rideIdParam);
+      } else {
+        loadThreads();
+      }
+
+      document.getElementById('back-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        // If they came directly from an active ride screen via a return link, go back there
+        if (returnUrl && activeRideId) {
+          window.location.href = decodeURIComponent(returnUrl);
+          return;
+        }
+
+        // Otherwise, standard toggle between chat view and thread list
+        if (activeRideId) {
+          activeRideId = null;
+          window.history.pushState({}, '', 'messages.html');
+          document.getElementById('chat-view').style.display = 'none';
+          document.getElementById('thread-view').style.display = 'block';
+          document.getElementById('header-title').textContent = 'Messages';
+          loadThreads();
+        } else {
+          window.location.href = userRole === 'driver' ? 'driver-dashboard.html' : 'home.html';
+        }
+      });
+
+      document.getElementById('send-btn').addEventListener('click', sendMessage);
+      document.getElementById('message-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+      });
+    });
+
+    async function loadThreads() {
+      const threadView = document.getElementById('thread-view');
+      
+      // Filter rides strictly where prior conversation or active interaction states exist
+      let query = _supabase
+        .from('rides')
+        .select('id, passenger_id, driver_id, status, driver_name, driver_avatar_url')
+        .in('status', ['accepted', 'ongoing', 'completed']);
+
+      if (userRole === 'driver') {
+        query = query.eq('driver_id', currentUserId);
+      } else {
+        query = query.eq('passenger_id', currentUserId);
+      }
+
+      const { data: rides, error } = await query.order('id', { ascending: false });
+
+      if (error || !rides || rides.length === 0) {
+        threadView.innerHTML = `<p style="color: #666; text-align: center; margin-top: 40px;">No prior conversations found.</p>`;
+        return;
+      }
+
+      // Check which rides actually have saved messages in the database
+      const rideIds = rides.map(r => r.id);
+      const { data: messagesData } = await _supabase
+        .from('messages')
+        .select('ride_id')
+        .in('ride_id', rideIds);
+
+      const activeRideIdsWithConvo = new Set((messagesData || []).map(m => m.ride_id));
+      const validRides = rides.filter(r => activeRideIdsWithConvo.has(r.id));
+
+      if (validRides.length === 0) {
+        threadView.innerHTML = `<p style="color: #666; text-align: center; margin-top: 40px;">No prior conversations found.</p>`;
+        return;
+      }
+
+      threadView.innerHTML = '';
+      
+      for (const ride of validRides) {
+        let displayName = "User";
+        let avatarUrl = null;
+
+        if (userRole === 'driver') {
+          // Fetch passenger profile info securely from database/profiles or auth metadata fallback
+          const { data: profileData } = await _supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', ride.passenger_id)
+            .maybeSingle();
+
+          displayName = profileData?.fullname || profileData?.full_name || 'Passenger';
+          avatarUrl = profileData?.avatar_url || profileData?.avatar || null;
+        } else {
+          displayName = ride.driver_name || 'Assigned Driver';
+          avatarUrl = ride.driver_avatar_url || null;
+        }
+
+        const item = document.createElement('div');
+        item.className = 'thread-item';
+        
+        const avatarHtml = avatarUrl 
+          ? `<div class="thread-avatar"><img src="${avatarUrl}" alt="" style="width:100%; height:100%; object-fit:cover;"></div>` 
+          : `<div class="thread-avatar">${displayName.charAt(0).toUpperCase()}</div>`;
+
+        item.innerHTML = `
+          ${avatarHtml}
+          <div style="flex: 1;">
+            <strong style="font-size: 14px; color: #1d1d1f; display: block;">${displayName}</strong>
+            <div style="font-size: 12px; color: #666; margin-top: 2px;">Status: ${ride.status}</div>
+          </div>
+          <span style="color: #214329; font-weight: bold; font-size: 14px;">Chat ❯</span>
+        `;
+        
+        item.addEventListener('click', () => {
+          window.history.pushState({}, '', `messages.html?ride_id=${ride.id}`);
+          openChat(ride.id);
+        });
+        threadView.appendChild(item);
+      }
+    }
+
+    async function openChat(rideId) {
+      activeRideId = rideId;
+      document.getElementById('thread-view').style.display = 'none';
+      document.getElementById('chat-view').style.display = 'flex';
+      document.getElementById('header-title').textContent = 'Messages';
+
+      await fetchMessages();
+
+      // Clear old channels to prevent duplicate triggers
+      _supabase.getChannels().forEach(c => _supabase.removeChannel(c));
+
+      _supabase
+        .channel(`room_${rideId}`)
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'messages', 
+          filter: `ride_id=eq.${rideId}` 
+        }, payload => {
+          // Only append if the message came from the OTHER person
+          if (payload.new.sender_id !== currentUserId) {
+            appendMessageBubble(payload.new);
+          }
+        })
+        .subscribe();
+    }
+
+    async function fetchMessages() {
+      const messageList = document.getElementById('message-list');
+      const { data, error } = await _supabase
+        .from('messages')
+        .select('*')
+        .eq('ride_id', activeRideId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error("Error fetching messages:", error);
+        return;
+      }
+
+      messageList.innerHTML = '';
+      (data || []).forEach(msg => appendMessageBubble(msg));
+    }
+
+    function appendMessageBubble(msg) {
+      const messageList = document.getElementById('message-list');
+      
+      const isSent = msg.sender_id === currentUserId;
+      
+      // Format timestamp (e.g., "8:45 AM")
+      let timeString = '';
+      if (msg.created_at) {
+        const date = new Date(msg.created_at);
+        timeString = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+      }
+
+      const wrapper = document.createElement('div');
+      wrapper.className = `message-wrapper ${isSent ? 'sent' : 'received'}`;
+
+      const bubble = document.createElement('div');
+      bubble.className = `message-bubble ${isSent ? 'sent' : 'received'}`;
+      bubble.textContent = msg.message;
+
+      const timestamp = document.createElement('div');
+      timestamp.className = 'message-timestamp';
+      timestamp.textContent = timeString;
+
+      wrapper.appendChild(bubble);
+      wrapper.appendChild(timestamp);
+      messageList.appendChild(wrapper);
+      messageList.scrollTop = messageList.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('message-input');
+      const text = input.value.trim();
+      if (!text || !activeRideId) return;
+
+      // Insert and return the created row using .select()
+      const { data, error } = await _supabase.from('messages').insert([{
+        ride_id: activeRideId,
+        sender_id: currentUserId,
+        message: text
+      }]).select();
+
+      if (error) {
+        alert("Failed to send message: " + error.message);
+        return;
+      }
+
+      // Instantly display your own message on the screen
+      if (data && data.length > 0) {
+        appendMessageBubble(data[0]);
+      }
+
+      input.value = '';
+    }
+  </script>
+</body>
+</html>
