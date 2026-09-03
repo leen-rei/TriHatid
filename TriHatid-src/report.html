@@ -210,7 +210,20 @@
           }
         }
 
-        const rideId = localStorage.getItem('last_completed_ride_id') || null;
+        // Instead of localStorage, query the database directly for the user's active or latest ride
+        let rideId = null;
+        const { data: activeRideData, error: rideError } = await _supabase
+          .from('rides')
+          .select('id')
+          .eq('passenger_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (activeRideData) {
+          rideId = activeRideData.id;
+        }
+
         const { error: insertError } = await _supabase
           .from('reports')
           .insert([
@@ -225,7 +238,10 @@
           ]);
 
         if (insertError) {
-          console.warn("Database insert issue (table may need creation):", insertError);
+          alert("Database insert failed: " + insertError.message);
+          btn.textContent = "Submit Report";
+          btn.disabled = false;
+          return;
         }
 
         showModal("Submitted", "Your report will be reviewed.", () => {

@@ -109,8 +109,10 @@ async function searchLocation(query, type) {
   }
 }
 
-// NAVIGATION VIEW SWITCHER
-function switchView(viewName) {
+/// NAVIGATION VIEW SWITCHER WITH HISTORY PUSH
+let viewHistoryStack = ['home'];
+
+function switchView(viewName, pushHistory = true) {
   const views = ['home', 'history', 'profile'];
   views.forEach(v => {
     const viewEl = document.getElementById(`view-${v}`);
@@ -126,6 +128,12 @@ function switchView(viewName) {
   
   if (viewName === 'home' && map) {
     setTimeout(() => map.invalidateSize(), 150);
+  }
+
+  if (pushHistory) {
+    if (viewHistoryStack[viewHistoryStack.length - 1] !== viewName) {
+      viewHistoryStack.push(viewName);
+    }
   }
 }
 
@@ -253,8 +261,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const coordinates = await window.Capacitor.Plugins.Geolocation.getCurrentPosition({
           enableHighAccuracy: true
         });
-        lat = coordinates.coords.latitude;
-        lng = coordinates.coords.longitude;
+        const rawLat = coordinates.coords.latitude;
+        const rawLng = coordinates.coords.longitude;
+
+        const snapped = await getNearestRoadCoordinates(rawLat, rawLng);
+        lat = snapped.lat;
+        lng = snapped.lng;
       } else {
         // Fallback for standard web browser environment
         if (!navigator.geolocation) {
@@ -317,38 +329,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
-
-// Global Android Hardware Back Button Handler for Capacitor
-document.addEventListener('deviceready', initCapacitorBackButton, false);
-
-// Fallback if deviceready already fired
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  initCapacitorBackButton();
-} else {
-  window.addEventListener('DOMContentLoaded', initCapacitorBackButton);
-}
-
-function initCapacitorBackButton() {
-  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-    window.Capacitor.Plugins.App.addListener('backButton', ({ canGoBack }) => {
-      const path = window.location.pathname;
-      
-      // If the user is on the main dashboard screens, ask if they want to exit the app
-      if (path.endsWith('home.html') || path.endsWith('driver-dashboard.html')) {
-        const confirmExit = confirm("Do you want to exit TriHatid?");
-        if (confirmExit) {
-          window.Capacitor.Plugins.App.exitApp();
-        }
-      } else if (window.history.length > 1) {
-        // If there is history inside the app, go back to the previous screen
-        window.history.back();
-      } else {
-        // Default fallback to home
-        window.location.href = 'home.html';
-      }
-    });
-  }
-}
 
 async function getNearestRoadCoordinates(lat, lng) {
   try {

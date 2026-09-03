@@ -256,45 +256,76 @@ html, body {
 }
 
 /* REGISTER & LOGIN BOX LAYOUT */
+/* REGISTER & LOGIN BOX LAYOUT */
 .register-box {
   width: 100vw;
-  height: 100vh;
-  padding: 40px 24px 32px 24px; 
+  min-height: 100vh;
+  padding: 36px 24px; 
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 12px;
+  justify-content: flex-start; 
+  gap: 12px; /* Changed from 4px to 12px so all fields have consistent spacing */
   box-sizing: border-box;
   background-color: #ffffff;
+  overflow-y: auto; 
 }
 
 .title {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 800;
   color: #214329;
-  margin-bottom: 1px;
+  margin-bottom: 16px; /* Generous breathing room under the app title */
   text-align: left;
 }
 
 .label {
   font-size: 12px;
   font-weight: 600;
-  color: #333333;
+  color: #444444;
   text-align: left;
-  margin-top: 4px;
+  margin-top: 10px; /* Separates the label clearly from the previous input field */
+  margin-bottom: 4px; /* Keeps the label closely anchored to its own input field */
+}
+
+.input1, select.input1 {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  background-color: #f8f9fa;
+  font-size: 13px;
+  color: #333333;
+  outline: none;
+}
+
+.button1 {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  background-color: #214329;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  margin-top: 20px; /* Clean spacing pushing the main action button away from inputs */
+  transition: background-color 0.2s ease;
 }
 
 .switch-link {
   font-size: 12px;
   color: #666666;
   text-align: center;
+  margin-top: 18px; /* Proper separation between the button and the footer login/signup toggle */
 }
 
 .switch-link a {
   color: #214329;
   font-weight: 700;
   text-decoration: none;
-  margin-top: 1px;
 }
 
 /* PROGRESS / LOADING */

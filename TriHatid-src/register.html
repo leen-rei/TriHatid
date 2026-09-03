@@ -65,11 +65,12 @@
     <input type="date" id="birthdate" class="input1" required>
     
     <!-- Driver-Only Fields Section (Hidden by default for Passengers) -->
-    <div id="driver-fields" style="display: none;">
-      <label class="label" for="franchise">Franchise No.</label>
+    <!-- Driver-Only Fields Section (Hidden by default for Passengers) -->
+    <div id="driver-fields" style="display: none; flex-direction: column;">
+      <label class="label" for="franchise" style="margin-top: 10px; margin-bottom: 15px; display: block;">Franchise No.</label>
       <input type="text" id="franchise" placeholder="Enter franchise number" class="input1">
 
-      <label class="label" for="plate">Plate No.</label>
+      <label class="label" for="plate" style="margin-top: 10px; margin-bottom: 15px; display: block;">Plate No.</label>
       <input type="text" id="plate" placeholder="Enter vehicle plate number" class="input1">
     </div>
 
